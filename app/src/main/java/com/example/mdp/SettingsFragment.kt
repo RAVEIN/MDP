@@ -6,6 +6,9 @@ import android.widget.SeekBar
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 
+private lateinit var storage:
+        GameSettingsStorage
+
 class SettingsFragment :
     Fragment(R.layout.fragment_settings) {
 
@@ -18,6 +21,10 @@ class SettingsFragment :
             savedInstanceState
         )
 
+        storage =
+            GameSettingsStorage(
+                requireContext()
+            )
 
         val seekGameSpeed =
             view.findViewById<SeekBar>(
@@ -29,7 +36,6 @@ class SettingsFragment :
                 R.id.textGameSpeed
             )
 
-
         val seekMaxBugs =
             view.findViewById<SeekBar>(
                 R.id.seekMaxBugs
@@ -39,7 +45,6 @@ class SettingsFragment :
             view.findViewById<TextView>(
                 R.id.textMaxBugs
             )
-
 
         val seekBonusInterval =
             view.findViewById<SeekBar>(
@@ -51,7 +56,6 @@ class SettingsFragment :
                 R.id.textBonusInterval
             )
 
-
         val seekRoundDuration =
             view.findViewById<SeekBar>(
                 R.id.seekRoundDuration
@@ -62,6 +66,21 @@ class SettingsFragment :
                 R.id.textRoundDuration
             )
 
+        val savedSettings =
+            storage.load()
+
+        seekGameSpeed.progress =
+            savedSettings.gameSpeed
+
+        seekMaxBugs.progress =
+            savedSettings.maxBugs
+
+        seekBonusInterval.progress =
+            savedSettings.bonusInterval
+
+        seekRoundDuration.progress =
+            savedSettings.roundDuration
+
 
         setupSeekBar(
             seekGameSpeed
@@ -69,6 +88,13 @@ class SettingsFragment :
 
             textGameSpeed.text =
                 "Скорость игры: $value"
+
+            saveSettings(
+                gameSpeed = value,
+                maxBugs = seekMaxBugs.progress,
+                bonusInterval = seekBonusInterval.progress,
+                roundDuration = seekRoundDuration.progress
+            )
         }
 
 
@@ -78,6 +104,13 @@ class SettingsFragment :
 
             textMaxBugs.text =
                 "Максимум тараканов: $value"
+
+            saveSettings(
+                gameSpeed = seekGameSpeed.progress,
+                maxBugs = value,
+                bonusInterval = seekBonusInterval.progress,
+                roundDuration = seekRoundDuration.progress
+            )
         }
 
 
@@ -87,6 +120,13 @@ class SettingsFragment :
 
             textBonusInterval.text =
                 "Интервал бонусов: $value сек."
+
+            saveSettings(
+                gameSpeed = seekGameSpeed.progress,
+                maxBugs = seekMaxBugs.progress,
+                bonusInterval = value,
+                roundDuration = seekRoundDuration.progress
+            )
         }
 
 
@@ -96,7 +136,32 @@ class SettingsFragment :
 
             textRoundDuration.text =
                 "Длительность раунда: $value сек."
+
+            saveSettings(
+                gameSpeed = seekGameSpeed.progress,
+                maxBugs = seekMaxBugs.progress,
+                bonusInterval = seekBonusInterval.progress,
+                roundDuration = value
+            )
         }
+    }
+
+
+    private fun saveSettings(
+        gameSpeed: Int,
+        maxBugs: Int,
+        bonusInterval: Int,
+        roundDuration: Int
+    ) {
+
+        storage.save(
+            GameSettings(
+                gameSpeed = gameSpeed,
+                maxBugs = maxBugs,
+                bonusInterval = bonusInterval,
+                roundDuration = roundDuration
+            )
+        )
     }
 
 
@@ -108,7 +173,6 @@ class SettingsFragment :
         onChange(
             seekBar.progress
         )
-
 
         seekBar.setOnSeekBarChangeListener(
 
