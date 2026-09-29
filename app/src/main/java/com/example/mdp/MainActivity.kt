@@ -70,10 +70,7 @@ class MainActivity : AppCompatActivity() {
                         2 -> openFragment(
                             "authors"
                         ) {
-                            PlaceholderFragment
-                                .newInstance(
-                                    "Авторы"
-                                )
+                            AuthorsFragment()
                         }
 
 
