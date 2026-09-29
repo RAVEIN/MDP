@@ -63,10 +63,7 @@ class MainActivity : AppCompatActivity() {
                         1 -> openFragment(
                             "rules"
                         ) {
-                            PlaceholderFragment
-                                .newInstance(
-                                    "Правила игры"
-                                )
+                            RulesFragment()
                         }
 
 
