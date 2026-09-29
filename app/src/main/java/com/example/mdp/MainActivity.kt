@@ -77,10 +77,7 @@ class MainActivity : AppCompatActivity() {
                         3 -> openFragment(
                             "settings"
                         ) {
-                            PlaceholderFragment
-                                .newInstance(
-                                    "Настройки игры"
-                                )
+                            SettingsFragment()
                         }
                     }
                 }
