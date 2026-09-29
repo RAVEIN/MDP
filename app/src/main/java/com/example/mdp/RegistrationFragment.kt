@@ -44,8 +44,13 @@ class RegistrationFragment :
         val textDifficulty =
             view.findViewById<TextView>(R.id.textDifficulty)
 
+        //max date is today
         val calendarBirth =
             view.findViewById<CalendarView>(R.id.calendarBirth)
+
+        calendarBirth.maxDate =
+            System.currentTimeMillis()
+
 
         val buttonRegister =
             view.findViewById<Button>(R.id.buttonRegister)
@@ -90,6 +95,11 @@ class RegistrationFragment :
         birthYear =
             calendar.get(Calendar.YEAR)
 
+        calendarBirth.date =
+            System.currentTimeMillis()
+
+        calendarBirth.maxDate =
+            System.currentTimeMillis()
 
         // Выбор даты рождения
         calendarBirth.setOnDateChangeListener {
