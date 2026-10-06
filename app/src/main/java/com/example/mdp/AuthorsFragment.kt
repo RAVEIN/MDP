@@ -28,7 +28,7 @@ class AuthorsFragment :
 
             Author(
                 "Огнивенко Дмитрий",
-                R.drawable.photo1
+                R.drawable.io
             ),
 
             Author(
