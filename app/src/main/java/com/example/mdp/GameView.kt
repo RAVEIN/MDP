@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.RectF
 import android.util.AttributeSet
+import android.view.MotionEvent
 import android.view.View
 import kotlin.random.Random
 
@@ -14,18 +15,17 @@ class GameView @JvmOverloads constructor(
     attrs: AttributeSet? = null
 ) : View(context, attrs) {
 
-    // Список жуков на поле
     private val bugs = mutableListOf<Bug>()
 
-    // Кэш изображений
     private val bitmaps = mutableMapOf<Int, Bitmap>()
 
-    // Время предыдущего кадра
     private var lastFrameTime = System.nanoTime()
 
-    // Состояние запуска
     private var running = false
 
+    var onBugHit: ((Bug) -> Unit)? = null
+
+    var onMiss: (() -> Unit)? = null
 
 
     fun startGame(
@@ -34,9 +34,7 @@ class GameView @JvmOverloads constructor(
         bugs.clear()
 
         repeat(bugCount) {
-            bugs.add(
-                createRandomBug()
-            )
+            bugs.add(createRandomBug())
         }
 
         lastFrameTime = System.nanoTime()
@@ -45,6 +43,7 @@ class GameView @JvmOverloads constructor(
 
         invalidate()
     }
+
 
     fun stopGame() {
         running = false
@@ -66,9 +65,7 @@ class GameView @JvmOverloads constructor(
     }
 
 
-    override fun onDraw(
-        canvas: Canvas
-    ) {
+    override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
         if (!running) {
@@ -79,23 +76,19 @@ class GameView @JvmOverloads constructor(
 
         drawBugs(canvas)
 
-        // Запрашиваем следующий кадр
         postInvalidateOnAnimation()
     }
 
 
     private fun updateBugs() {
 
-        val currentTime =
-            System.nanoTime()
+        val currentTime = System.nanoTime()
 
         val deltaTime =
             (currentTime - lastFrameTime) /
                     1_000_000_000f
 
-        lastFrameTime =
-            currentTime
-
+        lastFrameTime = currentTime
 
         bugs.forEach { bug ->
 
@@ -111,58 +104,38 @@ class GameView @JvmOverloads constructor(
 
 
             if (bug.x < 0f) {
-
                 bug.x = 0f
-
                 bug.directionX *= -1f
             }
-
 
             if (bug.x > 1f) {
-
                 bug.x = 1f
-
                 bug.directionX *= -1f
             }
 
-
             if (bug.y < 0f) {
-
                 bug.y = 0f
-
                 bug.directionY *= -1f
             }
 
-
             if (bug.y > 1f) {
-
                 bug.y = 1f
-
                 bug.directionY *= -1f
             }
         }
     }
 
 
-    private fun drawBugs(
-        canvas: Canvas
-    ) {
+    private fun drawBugs(canvas: Canvas) {
 
         bugs.forEach { bug ->
 
             val bitmap =
-                getBitmap(
-                    bug.imageResource
-                )
-
+                getBitmap(bug.imageResource)
 
             val bugSize =
                 bug.size *
-                        minOf(
-                            width,
-                            height
-                        )
-
+                        minOf(width, height)
 
             val pixelX =
                 bug.x * width
@@ -170,23 +143,17 @@ class GameView @JvmOverloads constructor(
             val pixelY =
                 bug.y * height
 
-
             val left =
-                pixelX -
-                        bugSize / 2f
+                pixelX - bugSize / 2f
 
             val top =
-                pixelY -
-                        bugSize / 2f
+                pixelY - bugSize / 2f
 
             val right =
-                pixelX +
-                        bugSize / 2f
+                pixelX + bugSize / 2f
 
             val bottom =
-                pixelY +
-                        bugSize / 2f
-
+                pixelY + bugSize / 2f
 
             val destination =
                 RectF(
@@ -195,7 +162,6 @@ class GameView @JvmOverloads constructor(
                     right,
                     bottom
                 )
-
 
             canvas.drawBitmap(
                 bitmap,
@@ -211,15 +177,78 @@ class GameView @JvmOverloads constructor(
         resourceId: Int
     ): Bitmap {
 
-        return bitmaps.getOrPut(
-            resourceId
-        ) {
+        return bitmaps.getOrPut(resourceId) {
 
             BitmapFactory.decodeResource(
                 resources,
                 resourceId
             )
         }
+    }
+
+
+    override fun onTouchEvent(
+        event: MotionEvent
+    ): Boolean {
+
+        if (
+            event.action !=
+            MotionEvent.ACTION_DOWN
+        ) {
+            return true
+        }
+
+        if (!running) {
+            return true
+        }
+
+
+        val touchX =
+            event.x / width.toFloat()
+
+        val touchY =
+            event.y / height.toFloat()
+
+
+        val hitBug =
+            bugs.lastOrNull { bug ->
+
+                val halfSize =
+                    bug.size / 2f
+
+                touchX >=
+                        bug.x - halfSize &&
+
+                        touchX <=
+                        bug.x + halfSize &&
+
+                        touchY >=
+                        bug.y - halfSize &&
+
+                        touchY <=
+                        bug.y + halfSize
+            }
+
+
+        if (hitBug != null) {
+
+            bugs.remove(hitBug)
+
+            onBugHit?.invoke(hitBug)
+
+            bugs.add(
+                createRandomBug()
+            )
+
+            invalidate()
+
+        } else {
+
+            onMiss?.invoke()
+        }
+
+
+        return true
     }
 
 
