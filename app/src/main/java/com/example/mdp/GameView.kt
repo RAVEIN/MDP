@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.RectF
 import android.util.AttributeSet
+import android.view.MotionEvent
 import android.view.View
 import kotlin.random.Random
 
@@ -17,6 +18,7 @@ class GameView @JvmOverloads constructor(
     var onBugHit: ((Bug) -> Unit)? = null
 
     var onMiss: (() -> Unit)? = null
+
     private val bugs = mutableListOf<Bug>()
 
     private val bitmaps = mutableMapOf<Int, Bitmap>()
@@ -26,7 +28,6 @@ class GameView @JvmOverloads constructor(
     private var running = false
 
     private var speedMultiplier = 1f
-
 
 
     fun startGame(
@@ -68,6 +69,7 @@ class GameView @JvmOverloads constructor(
         return BugFactory.create(type)
     }
 
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
@@ -81,7 +83,6 @@ class GameView @JvmOverloads constructor(
 
         postInvalidateOnAnimation()
     }
-
 
 
     private fun updateBugs() {
@@ -188,6 +189,72 @@ class GameView @JvmOverloads constructor(
                 null
             )
         }
+    }
+
+
+    override fun onTouchEvent(
+        event: MotionEvent
+    ): Boolean {
+
+        if (event.action != MotionEvent.ACTION_DOWN) {
+            return true
+        }
+
+        val touchX = event.x
+        val touchY = event.y
+
+
+        for (bug in bugs.reversed()) {
+
+            val bugSize =
+                bug.size *
+                        minOf(width, height)
+
+
+            val pixelX =
+                bug.x * width
+
+            val pixelY =
+                bug.y * height
+
+
+            val left =
+                pixelX -
+                        bugSize / 2f
+
+            val top =
+                pixelY -
+                        bugSize / 2f
+
+            val right =
+                pixelX +
+                        bugSize / 2f
+
+            val bottom =
+                pixelY +
+                        bugSize / 2f
+
+            if (
+                touchX >= left &&
+                touchX <= right &&
+                touchY >= top &&
+                touchY <= bottom
+            ) {
+
+                bugs.remove(bug)
+
+                onBugHit?.invoke(bug)
+
+                invalidate()
+
+                return true
+            }
+        }
+
+
+        onMiss?.invoke()
+
+        return true
     }
 
 
