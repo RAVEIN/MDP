@@ -3,11 +3,11 @@ package com.example.mdp
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.view.View
+import android.widget.Button
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 
-class GameFragment :
-    Fragment(R.layout.fragment_game) {
+class GameFragment : Fragment(R.layout.fragment_game) {
 
     private lateinit var gameView: GameView
 
@@ -19,6 +19,13 @@ class GameFragment :
     private lateinit var gameContainer: View
     private lateinit var resultContainer: View
 
+    private lateinit var textResultScore: TextView
+    private lateinit var textResultHits: TextView
+    private lateinit var textResultMisses: TextView
+    private lateinit var textResultAccuracy: TextView
+
+    private lateinit var buttonReplay: Button
+
     private var timer: CountDownTimer? = null
 
     private var score = 0
@@ -26,7 +33,6 @@ class GameFragment :
     private var misses = 0
 
     private val missPenalty = 5
-
 
     override fun onViewCreated(
         view: View,
@@ -36,7 +42,6 @@ class GameFragment :
             view,
             savedInstanceState
         )
-
 
         gameView =
             view.findViewById(R.id.gameView)
@@ -53,13 +58,26 @@ class GameFragment :
         textMisses =
             view.findViewById(R.id.textMisses)
 
-
         gameContainer =
             view.findViewById(R.id.gameContainer)
 
         resultContainer =
             view.findViewById(R.id.resultContainer)
 
+        textResultScore =
+            view.findViewById(R.id.textResultScore)
+
+        textResultHits =
+            view.findViewById(R.id.textResultHits)
+
+        textResultMisses =
+            view.findViewById(R.id.textResultMisses)
+
+        textResultAccuracy =
+            view.findViewById(R.id.textResultAccuracy)
+
+        buttonReplay =
+            view.findViewById(R.id.buttonReplay)
 
 
         gameView.onBugHit = { bug ->
@@ -76,13 +94,17 @@ class GameFragment :
 
             misses++
 
-            score =
-                maxOf(
-                    0,
-                    score - missPenalty
-                )
+            score = maxOf(
+                0,
+                score - missPenalty
+            )
 
             updateHud()
+        }
+
+
+        buttonReplay.setOnClickListener {
+            startRound()
         }
 
 
@@ -92,6 +114,8 @@ class GameFragment :
 
 
     private fun startRound() {
+
+        timer?.cancel()
 
         score = 0
         hits = 0
@@ -112,7 +136,6 @@ class GameFragment :
             ).load()
 
 
-
         gameView.startGame(
             bugCount =
                 settings.maxBugs,
@@ -122,9 +145,6 @@ class GameFragment :
         )
 
 
-        /*
-         * Запускаем таймер раунда.
-         */
         startTimer(
             settings.roundDuration
         )
@@ -136,36 +156,69 @@ class GameFragment :
 
         timer?.cancel()
 
+        timer = object : CountDownTimer(
+            seconds * 1000L,
+            1000L
+        ) {
 
-        timer =
-            object : CountDownTimer(
-                seconds * 1000L,
-                1000L
+            override fun onTick(
+                millisUntilFinished: Long
             ) {
 
-                override fun onTick(
-                    millisUntilFinished: Long
-                ) {
+                val secondsLeft =
+                    millisUntilFinished /
+                            1000L
 
-                    val secondsLeft =
-                        millisUntilFinished /
-                                1000L
-
-                    textTime.text =
-                        "Время: $secondsLeft"
-                }
+                textTime.text =
+                    "Время: $secondsLeft"
+            }
 
 
-                override fun onFinish() {
+            override fun onFinish() {
 
-                    textTime.text =
-                        "Время: 0"
+                textTime.text =
+                    "Время: 0"
 
-                    gameView.stopGame()
+                finishGame()
+            }
+        }.start()
+    }
 
-                    finishGame()
-                }
-            }.start()
+    private fun finishGame() {
+
+        timer?.cancel()
+
+        gameView.stopGame()
+
+        val attempts =
+            hits + misses
+
+        val accuracy =
+            if (attempts == 0) {
+                0
+            } else {
+                hits * 100 / attempts
+            }
+
+
+        textResultScore.text =
+            "Очки: $score"
+
+        textResultHits.text =
+            "Попадания: $hits"
+
+        textResultMisses.text =
+            "Промахи: $misses"
+
+        textResultAccuracy.text =
+            "Точность: $accuracy%"
+
+
+        gameContainer.visibility =
+            View.GONE
+
+        resultContainer.visibility =
+            View.VISIBLE
     }
 
 
@@ -179,13 +232,6 @@ class GameFragment :
 
         textMisses.text =
             "Промахи: $misses"
-    }
-
-
-    private fun finishGame() {
-
-        gameView.stopGame()
-
     }
 
 
