@@ -22,7 +22,7 @@ class MainActivity : AppCompatActivity() {
         viewPager.adapter =
             TabsAdapter(this)
 
-        viewPager.offscreenPageLimit = 5
+        //viewPager.offscreenPageLimit = 5
 
         val tabNames = arrayOf(
             "Регистрация",

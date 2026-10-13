@@ -304,6 +304,37 @@ class GameFragment : Fragment(R.layout.fragment_game) {
 
         resultContainer.visibility =
             View.VISIBLE
+
+        saveResult(accuracy)
+    }
+
+    private fun saveResult(
+        accuracy: Int
+    ) {
+
+        val player =
+            activePlayer ?: return
+
+
+        val result =
+            ScoreEntity(
+                playerId = player.id,
+                score = score,
+                difficulty = player.difficulty,
+                hits = hits,
+                misses = misses,
+                accuracy = accuracy,
+                timestamp = System.currentTimeMillis()
+            )
+
+
+        viewLifecycleOwner
+            .lifecycleScope
+            .launch {
+
+                database.scoreDao()
+                    .insertScore(result)
+            }
     }
 
 
