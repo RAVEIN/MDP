@@ -39,6 +39,8 @@ class GameFragment : Fragment(R.layout.fragment_game) {
     private var hits = 0
     private var misses = 0
 
+    private var resultSaved = false
+
     private val missPenalty = 5
 
     private lateinit var textPlayer: TextView
@@ -47,6 +49,10 @@ class GameFragment : Fragment(R.layout.fragment_game) {
     private lateinit var currentPlayerStorage: CurrentPlayerStorage
 
     private var activePlayer: PlayerEntity? = null
+
+    private var loadedPlayerId: Long? = null
+
+    private var hasGameState = false
 
     override fun onViewCreated(
         view: View,
@@ -132,6 +138,11 @@ class GameFragment : Fragment(R.layout.fragment_game) {
             updateHud()
         }
 
+        gameView.onAllBugsDestroyed = {
+
+            finishGame()
+        }
+
 
         buttonReplay.setOnClickListener {
 
@@ -150,7 +161,7 @@ class GameFragment : Fragment(R.layout.fragment_game) {
         }
 
 
-        loadActivePlayer()
+
     }
 
     private fun loadActivePlayer() {
@@ -160,13 +171,11 @@ class GameFragment : Fragment(R.layout.fragment_game) {
 
         if (playerId == null) {
 
-            Toast.makeText(
-                requireContext(),
-                "Сначала выберите игрока",
-                Toast.LENGTH_SHORT
-            ).show()
+            activePlayer = null
+            loadedPlayerId = null
+            hasGameState = false
 
-            gameView.stopGame()
+            showPlayerRequired()
 
             return
         }
@@ -183,28 +192,84 @@ class GameFragment : Fragment(R.layout.fragment_game) {
 
                     currentPlayerStorage.clear()
 
+                    activePlayer = null
+                    loadedPlayerId = null
+                    hasGameState = false
+
+                    showPlayerRequired()
+
                     return@launch
                 }
 
-                activePlayer = player
+                val playerChanged =
+                    loadedPlayerId != player.id
+
+                activePlayer =
+                    player
+
+                loadedPlayerId =
+                    player.id
 
                 textPlayer.text =
                     "Игрок: ${player.fullName} | " +
                             "Сложность: ${player.difficulty}"
 
-                startRound()
+                buttonReplay.isEnabled =
+                    true
+
+                if (
+                    !hasGameState ||
+                    playerChanged
+                ) {
+
+                    startRound()
+                }
             }
+    }
+
+    private fun showPlayerRequired() {
+
+        timer?.cancel()
+
+        gameView.stopGame()
+
+        hasGameState = false
+
+        gameContainer.visibility =
+            View.GONE
+
+        resultContainer.visibility =
+            View.VISIBLE
+
+        textResultScore.text =
+            "Сначала выберите или зарегистрируйте игрока"
+
+        textResultHits.text =
+            ""
+
+        textResultMisses.text =
+            ""
+
+        textResultAccuracy.text =
+            ""
+
+        buttonReplay.isEnabled =
+            false
     }
 
 
 
     private fun startRound() {
 
+        hasGameState = true
+
         timer?.cancel()
 
         score = 0
         hits = 0
         misses = 0
+
+        resultSaved = false
 
         updateHud()
 
@@ -312,9 +377,14 @@ class GameFragment : Fragment(R.layout.fragment_game) {
         accuracy: Int
     ) {
 
+        if (resultSaved) {
+            return
+        }
+
         val player =
             activePlayer ?: return
 
+        resultSaved = true
 
         val result =
             ScoreEntity(
@@ -326,7 +396,6 @@ class GameFragment : Fragment(R.layout.fragment_game) {
                 accuracy = accuracy,
                 timestamp = System.currentTimeMillis()
             )
-
 
         viewLifecycleOwner
             .lifecycleScope
@@ -358,5 +427,11 @@ class GameFragment : Fragment(R.layout.fragment_game) {
         gameView.stopGame()
 
         super.onDestroyView()
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        loadActivePlayer()
     }
 }

@@ -19,6 +19,8 @@ class GameView @JvmOverloads constructor(
 
     var onMiss: (() -> Unit)? = null
 
+    var onAllBugsDestroyed: (() -> Unit)? = null
+
     private val bugs = mutableListOf<Bug>()
 
     private val bitmaps = mutableMapOf<Int, Bitmap>()
@@ -193,66 +195,74 @@ class GameView @JvmOverloads constructor(
 
 
     override fun onTouchEvent(
-        event: MotionEvent
+        event: android.view.MotionEvent
     ): Boolean {
 
-        if (event.action != MotionEvent.ACTION_DOWN) {
+        if (
+            event.action !=
+            android.view.MotionEvent.ACTION_DOWN
+        ) {
             return true
         }
 
-        val touchX = event.x
-        val touchY = event.y
 
-
-        for (bug in bugs.reversed()) {
-
-            val bugSize =
-                bug.size *
-                        minOf(width, height)
-
-
-            val pixelX =
-                bug.x * width
-
-            val pixelY =
-                bug.y * height
-
-
-            val left =
-                pixelX -
-                        bugSize / 2f
-
-            val top =
-                pixelY -
-                        bugSize / 2f
-
-            val right =
-                pixelX +
-                        bugSize / 2f
-
-            val bottom =
-                pixelY +
-                        bugSize / 2f
-
-            if (
-                touchX >= left &&
-                touchX <= right &&
-                touchY >= top &&
-                touchY <= bottom
-            ) {
-
-                bugs.remove(bug)
-
-                onBugHit?.invoke(bug)
-
-                invalidate()
-
-                return true
-            }
+        if (!running) {
+            return true
         }
 
+        val touchX =
+            event.x / width
 
-        onMiss?.invoke()
+        val touchY =
+            event.y / height
+
+
+        val hitBug =
+            bugs.lastOrNull { bug ->
+
+                val halfSize =
+                    bug.size / 2f
+
+
+                touchX >=
+                        bug.x - halfSize &&
+
+                        touchX <=
+                        bug.x + halfSize &&
+
+                        touchY >=
+                        bug.y - halfSize &&
+
+                        touchY <=
+                        bug.y + halfSize
+            }
+
+
+        if (hitBug != null) {
+
+            bugs.remove(
+                hitBug
+            )
+
+            onBugHit?.invoke(
+                hitBug
+            )
+
+            if (bugs.isEmpty()) {
+
+                running =
+                    false
+
+                onAllBugsDestroyed
+                    ?.invoke()
+            }
+
+            invalidate()
+
+        } else {
+            onMiss?.invoke()
+        }
+
 
         return true
     }
