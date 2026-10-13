@@ -15,6 +15,10 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import java.util.Calendar
+import androidx.lifecycle.lifecycleScope
+import com.example.mdp.data.AppDatabase
+import com.example.mdp.data.PlayerEntity
+import kotlinx.coroutines.launch
 
 class RegistrationFragment :
     Fragment(R.layout.fragment_registration) {
@@ -27,6 +31,16 @@ class RegistrationFragment :
         view: View,
         savedInstanceState: Bundle?
     ) {
+
+        super.onViewCreated(
+            view,
+            savedInstanceState
+        )
+
+        val database =
+            AppDatabase.getInstance(
+                requireContext()
+            )
         super.onViewCreated(view, savedInstanceState)
 
         val editFullName =
@@ -213,6 +227,51 @@ class RegistrationFragment :
                 Дата рождения: ${player.birthDay}.${player.birthMonth}.${player.birthYear}
                 Знак зодиака: ${player.zodiac}
             """.trimIndent()
+
+            val playerEntity =
+                PlayerEntity(
+
+                    fullName =
+                        player.fullName,
+
+                    gender =
+                        player.gender,
+
+                    course =
+                        player.course,
+
+                    difficulty =
+                        player.difficulty,
+
+                    birthDay =
+                        player.birthDay,
+
+                    birthMonth =
+                        player.birthMonth,
+
+                    birthYear =
+                        player.birthYear,
+
+                    zodiac =
+                        player.zodiac
+                )
+
+
+            viewLifecycleOwner
+                .lifecycleScope
+                .launch {
+
+                    database.playerDao()
+                        .insertPlayer(
+                            playerEntity
+                        )
+
+                    Toast.makeText(
+                        requireContext(),
+                        "Игрок сохранён в базе данных",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
 
 
             imageZodiac.setImageResource(
