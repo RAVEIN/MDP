@@ -22,11 +22,12 @@ class MainActivity : AppCompatActivity() {
         viewPager.adapter =
             TabsAdapter(this)
 
-        viewPager.offscreenPageLimit = 4
+        viewPager.offscreenPageLimit = 5
 
         val tabNames = arrayOf(
             "Регистрация",
             "Игра",
+            "Рекорды",
             "Правила",
             "Авторы",
             "Настройки"

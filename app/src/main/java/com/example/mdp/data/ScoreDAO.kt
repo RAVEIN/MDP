@@ -19,4 +19,28 @@ interface ScoreDao {
     )
     suspend fun getAllScores():
             List<ScoreEntity>
+
+    @Query(
+        """
+    SELECT
+        players.fullName AS playerName,
+        scores.score AS score,
+        scores.difficulty AS difficulty,
+        scores.hits AS hits,
+        scores.misses AS misses,
+        scores.accuracy AS accuracy,
+        scores.timestamp AS timestamp
+
+    FROM scores
+
+    INNER JOIN players
+        ON players.id = scores.playerId
+
+    ORDER BY
+        scores.score DESC,
+        scores.timestamp DESC
+    """
+    )
+    suspend fun getRecords():
+            List<RecordItem>
 }
