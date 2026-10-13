@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+
+    <LinearLayout
+        android:id="@+id/gameContainer"
+
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+
+        android:orientation="vertical">
+
+
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+
+            android:orientation="horizontal"
+
+            android:padding="8dp">
+
+
+            <TextView
+                android:id="@+id/textScore"
+
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+
+                android:layout_weight="1"
+
+                android:text="Очки: 0"
+                android:textSize="18sp" />
+
+
+            <TextView
+                android:id="@+id/textTime"
+
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+
+                android:text="Время: --"
+                android:textSize="18sp" />
+
+        </LinearLayout>
+
+
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+
+            android:orientation="horizontal"
+
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="8dp">
+
+
+            <TextView
+                android:id="@+id/textHits"
+
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+
+                android:layout_weight="1"
+
+                android:text="Попадания: 0"
+                android:textSize="16sp" />
+
+
+            <TextView
+                android:id="@+id/textMisses"
+
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+
+                android:text="Промахи: 0"
+                android:textSize="16sp" />
+
+        </LinearLayout>
+
+
+
+        <com.example.mdp.GameView
+            android:id="@+id/gameView"
+
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+
+            android:layout_weight="1" />
+
+    </LinearLayout>
+
+
+    <LinearLayout
+        android:id="@+id/resultContainer"
+
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+
+        android:orientation="vertical"
+
+        android:gravity="center"
+
+        android:visibility="gone"
+
+        android:padding="24dp">
+
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+
+            android:text="Результаты"
+            android:textSize="28sp" />
+
+
+        <TextView
+            android:id="@+id/textResultScore"
+
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+
+            android:text="Очки: 0"
+            android:textSize="20sp" />
+
+
+        <TextView
+            android:id="@+id/textResultHits"
+
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+
+            android:text="Попадания: 0"
+            android:textSize="20sp" />
+
+
+        <TextView
+            android:id="@+id/textResultMisses"
+
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+
+            android:text="Промахи: 0"
+            android:textSize="20sp" />
+
+
+        <TextView
+            android:id="@+id/textResultAccuracy"
+
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+
+            android:text="Точность: 0%"
+            android:textSize="20sp" />
+
+
+        <Button
+            android:id="@+id/buttonReplay"
+
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+
+            android:text="Играть ещё раз" />
+
+    </LinearLayout>
+
+</FrameLayout>
