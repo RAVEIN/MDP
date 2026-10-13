@@ -12,6 +12,13 @@ import kotlinx.coroutines.launch
 class RecordsFragment :
     Fragment(R.layout.fragment_records) {
 
+    private lateinit var database: AppDatabase
+
+    private lateinit var listRecords: ListView
+
+    private lateinit var textEmpty: TextView
+
+
     override fun onViewCreated(
         view: View,
         savedInstanceState: Bundle?
@@ -22,23 +29,38 @@ class RecordsFragment :
             savedInstanceState
         )
 
-        val database =
+
+        database =
             AppDatabase.getInstance(
                 requireContext()
             )
 
-        val listRecords =
-            view.findViewById<ListView>(
+
+        listRecords =
+            view.findViewById(
                 R.id.listRecords
             )
 
-        val textEmpty =
-            view.findViewById<TextView>(
+
+        textEmpty =
+            view.findViewById(
                 R.id.textEmptyRecords
             )
 
+
         listRecords.emptyView =
             textEmpty
+    }
+
+
+    override fun onResume() {
+        super.onResume()
+
+        loadRecords()
+    }
+
+
+    private fun loadRecords() {
 
         viewLifecycleOwner
             .lifecycleScope
@@ -47,6 +69,7 @@ class RecordsFragment :
                 val records =
                     database.scoreDao()
                         .getRecords()
+
 
                 listRecords.adapter =
                     RecordAdapter(
