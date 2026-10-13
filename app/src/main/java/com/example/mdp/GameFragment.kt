@@ -7,6 +7,13 @@ import android.widget.Button
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 
+import androidx.lifecycle.lifecycleScope
+import com.example.mdp.data.AppDatabase
+import com.example.mdp.data.PlayerEntity
+import com.example.mdp.data.ScoreEntity
+import kotlinx.coroutines.launch
+import android.widget.Toast
+
 class GameFragment : Fragment(R.layout.fragment_game) {
 
     private lateinit var gameView: GameView
@@ -33,6 +40,13 @@ class GameFragment : Fragment(R.layout.fragment_game) {
     private var misses = 0
 
     private val missPenalty = 5
+
+    private lateinit var textPlayer: TextView
+
+    private lateinit var database: AppDatabase
+    private lateinit var currentPlayerStorage: CurrentPlayerStorage
+
+    private var activePlayer: PlayerEntity? = null
 
     override fun onViewCreated(
         view: View,
@@ -79,12 +93,27 @@ class GameFragment : Fragment(R.layout.fragment_game) {
         buttonReplay =
             view.findViewById(R.id.buttonReplay)
 
+        textPlayer =
+            view.findViewById(R.id.textPlayer)
+
+
+        database =
+            AppDatabase.getInstance(
+                requireContext()
+            )
+
+        currentPlayerStorage =
+            CurrentPlayerStorage(
+                requireContext()
+            )
+
 
         gameView.onBugHit = { bug ->
 
             hits++
 
-            score += bug.points
+            score +=
+                bug.points
 
             updateHud()
         }
@@ -94,21 +123,77 @@ class GameFragment : Fragment(R.layout.fragment_game) {
 
             misses++
 
-            score = maxOf(
-                0,
-                score - missPenalty
-            )
+            score =
+                maxOf(
+                    0,
+                    score - missPenalty
+                )
 
             updateHud()
         }
 
 
         buttonReplay.setOnClickListener {
-            startRound()
+
+            if (activePlayer == null) {
+
+                Toast.makeText(
+                    requireContext(),
+                    "Сначала выберите игрока",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+            } else {
+
+                startRound()
+            }
         }
 
 
-        startRound()
+        loadActivePlayer()
+    }
+
+    private fun loadActivePlayer() {
+
+        val playerId =
+            currentPlayerStorage.getPlayerId()
+
+        if (playerId == null) {
+
+            Toast.makeText(
+                requireContext(),
+                "Сначала выберите игрока",
+                Toast.LENGTH_SHORT
+            ).show()
+
+            gameView.stopGame()
+
+            return
+        }
+
+        viewLifecycleOwner
+            .lifecycleScope
+            .launch {
+
+                val player =
+                    database.playerDao()
+                        .getPlayerById(playerId)
+
+                if (player == null) {
+
+                    currentPlayerStorage.clear()
+
+                    return@launch
+                }
+
+                activePlayer = player
+
+                textPlayer.text =
+                    "Игрок: ${player.fullName} | " +
+                            "Сложность: ${player.difficulty}"
+
+                startRound()
+            }
     }
 
 
