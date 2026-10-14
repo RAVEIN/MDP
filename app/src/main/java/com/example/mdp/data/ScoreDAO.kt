@@ -35,10 +35,16 @@ interface ScoreDao {
 
     INNER JOIN players
         ON players.id = scores.playerId
-
+    WHERE scores.id = (
+    SELECT s2.id
+    FROM scores AS s2
+    WHERE s2.playerId = scores.playerId
     ORDER BY
-        scores.score DESC,
-        scores.timestamp DESC
+        s2.score DESC,
+        s2.timestamp DESC
+    LIMIT 1
+    )
+    ORDER BY scores.score DESC
     """
     )
     suspend fun getRecords():
