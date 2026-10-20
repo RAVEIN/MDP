@@ -39,6 +39,13 @@ class GameView @JvmOverloads constructor(
     private var bonusIntervalSeconds = 15f
     private var bonusElapsedSeconds = 0f
 
+    private var tiltX = 0f
+    private var tiltY = 0f
+
+    private var tiltEnabled = false
+
+    private val tiltStrength = 0.45f
+
 
     fun startGame(
         bugCount: Int,
@@ -46,6 +53,7 @@ class GameView @JvmOverloads constructor(
         bonusIntervalSeconds: Int
     ) {
         bugs.clear()
+        resetTilt()
 
         repeat(bugCount) {
             bugs.add(createRandomBug())
@@ -68,6 +76,8 @@ class GameView @JvmOverloads constructor(
 
     fun stopGame() {
         running = false
+        resetTilt()
+        bonus = null
     }
 
 
@@ -118,36 +128,52 @@ class GameView @JvmOverloads constructor(
     ) {
         bugs.forEach { bug ->
 
-            bug.x +=
+            val baseSpeedX =
                 bug.directionX *
                         bug.speed *
-                        speedMultiplier *
+                        speedMultiplier
+
+            val baseSpeedY =
+                bug.directionY *
+                        bug.speed *
+                        speedMultiplier
+
+            val gravitySpeedX =
+                if (tiltEnabled) {
+                    tiltX * tiltStrength
+                } else {
+                    0f
+                }
+
+            val gravitySpeedY =
+                if (tiltEnabled) {
+                    tiltY * tiltStrength
+                } else {
+                    0f
+                }
+
+            bug.x +=
+                (baseSpeedX + gravitySpeedX) *
                         deltaTime
 
             bug.y +=
-                bug.directionY *
-                        bug.speed *
-                        speedMultiplier *
+                (baseSpeedY + gravitySpeedY) *
                         deltaTime
-
 
             if (bug.x < 0f) {
                 bug.x = 0f
                 bug.directionX *= -1f
             }
 
-
             if (bug.x > 1f) {
                 bug.x = 1f
                 bug.directionX *= -1f
             }
 
-
             if (bug.y < 0f) {
                 bug.y = 0f
                 bug.directionY *= -1f
             }
-
 
             if (bug.y > 1f) {
                 bug.y = 1f
@@ -402,5 +428,22 @@ class GameView @JvmOverloads constructor(
         running = false
 
         super.onDetachedFromWindow()
+    }
+
+    fun setTilt(
+        x: Float,
+        y: Float
+    ) {
+        tiltX = x.coerceIn(-1f, 1f)
+        tiltY = y.coerceIn(-1f, 1f)
+
+        tiltEnabled = true
+    }
+
+    fun resetTilt() {
+        tiltX = 0f
+        tiltY = 0f
+
+        tiltEnabled = false
     }
 }
