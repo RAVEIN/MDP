@@ -12,6 +12,7 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.widget.Toast
+import android.media.MediaPlayer
 
 class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
 
@@ -44,6 +45,8 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
     private var tiltSensor: Sensor? = null
 
     private var tiltEnabled = false
+
+    private var screamPlayer: MediaPlayer? = null
 
     override fun onViewCreated(
         view: View,
@@ -117,6 +120,8 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
             tiltEnabled = true
 
             startTiltSensor()
+
+            playBugScream()
         }
 
         buttonReplay.setOnClickListener {
@@ -136,6 +141,12 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
                     sensorManager.getDefaultSensor(
                         Sensor.TYPE_ACCELEROMETER
                     )
+
+        screamPlayer =
+            MediaPlayer.create(
+                requireContext(),
+                R.raw.bug_scream
+            )
 
         startRound()
     }
@@ -290,6 +301,38 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
         gameView.resetTilt()
     }
 
+    private fun playBugScream() {
+
+        val player =
+            screamPlayer ?: return
+
+        if (player.isPlaying) {
+            player.pause()
+        }
+
+        player.seekTo(0)
+
+        player.start()
+    }
+
+    override fun onPause() {
+
+        sensorManager.unregisterListener(this)
+
+        gameView.resetTilt()
+
+        super.onPause()
+    }
+
+    override fun onResume() {
+
+        super.onResume()
+
+        if (tiltEnabled) {
+            startTiltSensor()
+        }
+    }
+
     override fun onSensorChanged(
         event: SensorEvent?
     ) {
@@ -342,6 +385,9 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
         stopTiltSensor()
 
         gameView.stopGame()
+
+        screamPlayer?.release()
+        screamPlayer = null
 
         super.onDestroyView()
     }
