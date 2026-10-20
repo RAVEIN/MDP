@@ -18,6 +18,7 @@ class GameView @JvmOverloads constructor(
 ) : View(context, attrs) {
     var onBugHit: ((Bug) -> Unit)? = null
     var onMiss: (() -> Unit)? = null
+    var onBonusCollected: (() -> Unit)? = null
     private val bugs = mutableListOf<Bug>()
     private val bitmaps = mutableMapOf<Int, Bitmap>()
     private var bonus: Bonus? = null
@@ -280,6 +281,23 @@ class GameView @JvmOverloads constructor(
         val touchX = event.x
         val touchY = event.y
 
+        val currentBonus = bonus
+        if (
+            currentBonus != null &&
+            isBonusHit(
+                touchX,
+                touchY,
+                currentBonus
+            )
+        ) {
+            bonus = null
+
+            onBonusCollected?.invoke()
+
+            invalidate()
+
+            return true
+        }
 
         for (bug in bugs.reversed()) {
 
@@ -332,6 +350,36 @@ class GameView @JvmOverloads constructor(
         onMiss?.invoke()
 
         return true
+    }
+
+
+    private fun isBonusHit(
+        touchX: Float,
+        touchY: Float,
+        currentBonus: Bonus
+    ): Boolean {
+        val bonusSize =
+            currentBonus.size *
+                    minOf(width, height)
+
+        val centerX =
+            currentBonus.x * width
+
+        val centerY =
+            currentBonus.y * height
+
+        val radius =
+            bonusSize / 2f
+
+        val dx =
+            touchX - centerX
+
+        val dy =
+            touchY - centerY
+
+        return dx * dx +
+                dy * dy <=
+                radius * radius
     }
 
 
