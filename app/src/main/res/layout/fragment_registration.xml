@@ -8,11 +8,69 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="16dp">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+
+            android:text="Текущий игрок"
+
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+
+        <TextView
+            android:id="@+id/textCurrentPlayer"
+
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+
+            android:layout_marginTop="6dp"
+
+            android:text="Игрок не выбран"
+            android:textSize="16sp" />
+
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Регистрация игрока"
+
+            android:layout_marginTop="12dp"
+
+            android:text=
+                "Ранее зарегистрированные игроки:" />
+
+
+        <Spinner
+            android:id="@+id/spinnerExistingPlayer"
+
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+
+        <Button
+            android:id="@+id/buttonSelectPlayer"
+
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+
+            android:layout_marginTop="8dp"
+
+            android:text="Выбрать игрока" />
+
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="16dp"
+
+            android:background="#808080" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Регистрация нового игрока"
             android:textSize="24sp"
             android:textStyle="bold" />
 

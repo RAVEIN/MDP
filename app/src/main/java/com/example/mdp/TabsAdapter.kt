@@ -9,16 +9,17 @@ class TabsAdapter(
 ) : FragmentStateAdapter(activity) {
 
     override fun getItemCount(): Int {
-        return 5
+        return 6
     }
 
     override fun createFragment(position: Int): Fragment {
         return when (position) {
             0 -> RegistrationFragment()
             1 -> GameFragment()
-            2 -> RulesFragment()
-            3 -> AuthorsFragment()
-            4 -> SettingsFragment()
+            2 -> RecordsFragment()
+            3 -> RulesFragment()
+            4 -> AuthorsFragment()
+            5 -> SettingsFragment()
 
             else -> RegistrationFragment()
         }
