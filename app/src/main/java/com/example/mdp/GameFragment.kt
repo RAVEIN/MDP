@@ -7,17 +7,9 @@ import android.widget.Button
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 
-import androidx.lifecycle.lifecycleScope
-import com.example.mdp.data.AppDatabase
-import com.example.mdp.data.PlayerEntity
-import com.example.mdp.data.ScoreEntity
-import kotlinx.coroutines.launch
-import android.widget.Toast
-
 class GameFragment : Fragment(R.layout.fragment_game) {
 
     private lateinit var gameView: GameView
-
     private lateinit var textScore: TextView
     private lateinit var textTime: TextView
     private lateinit var textHits: TextView
@@ -39,20 +31,7 @@ class GameFragment : Fragment(R.layout.fragment_game) {
     private var hits = 0
     private var misses = 0
 
-    private var resultSaved = false
-
     private val missPenalty = 5
-
-    private lateinit var textPlayer: TextView
-
-    private lateinit var database: AppDatabase
-    private lateinit var currentPlayerStorage: CurrentPlayerStorage
-
-    private var activePlayer: PlayerEntity? = null
-
-    private var loadedPlayerId: Long? = null
-
-    private var hasGameState = false
 
     override fun onViewCreated(
         view: View,
@@ -99,27 +78,12 @@ class GameFragment : Fragment(R.layout.fragment_game) {
         buttonReplay =
             view.findViewById(R.id.buttonReplay)
 
-        textPlayer =
-            view.findViewById(R.id.textPlayer)
-
-
-        database =
-            AppDatabase.getInstance(
-                requireContext()
-            )
-
-        currentPlayerStorage =
-            CurrentPlayerStorage(
-                requireContext()
-            )
-
 
         gameView.onBugHit = { bug ->
 
             hits++
 
-            score +=
-                bug.points
+            score += bug.points
 
             updateHud()
         }
@@ -129,147 +93,28 @@ class GameFragment : Fragment(R.layout.fragment_game) {
 
             misses++
 
-            score =
-                maxOf(
-                    0,
-                    score - missPenalty
-                )
+            score = maxOf(
+                0,
+                score - missPenalty
+            )
 
             updateHud()
         }
 
-        gameView.onAllBugsDestroyed = {
-
-            finishGame()
-        }
-
-
         buttonReplay.setOnClickListener {
-
-            if (activePlayer == null) {
-
-                Toast.makeText(
-                    requireContext(),
-                    "Сначала выберите игрока",
-                    Toast.LENGTH_SHORT
-                ).show()
-
-            } else {
-
-                startRound()
-            }
+            startRound()
         }
 
 
-
+        startRound()
     }
-
-    private fun loadActivePlayer() {
-
-        val playerId =
-            currentPlayerStorage.getPlayerId()
-
-        if (playerId == null) {
-
-            activePlayer = null
-            loadedPlayerId = null
-            hasGameState = false
-
-            showPlayerRequired()
-
-            return
-        }
-
-        viewLifecycleOwner
-            .lifecycleScope
-            .launch {
-
-                val player =
-                    database.playerDao()
-                        .getPlayerById(playerId)
-
-                if (player == null) {
-
-                    currentPlayerStorage.clear()
-
-                    activePlayer = null
-                    loadedPlayerId = null
-                    hasGameState = false
-
-                    showPlayerRequired()
-
-                    return@launch
-                }
-
-                val playerChanged =
-                    loadedPlayerId != player.id
-
-                activePlayer =
-                    player
-
-                loadedPlayerId =
-                    player.id
-
-                textPlayer.text =
-                    "Игрок: ${player.fullName} | " +
-                            "Сложность: ${player.difficulty}"
-
-                buttonReplay.isEnabled =
-                    true
-
-                if (
-                    !hasGameState ||
-                    playerChanged
-                ) {
-
-                    startRound()
-                }
-            }
-    }
-
-    private fun showPlayerRequired() {
-
-        timer?.cancel()
-
-        gameView.stopGame()
-
-        hasGameState = false
-
-        gameContainer.visibility =
-            View.GONE
-
-        resultContainer.visibility =
-            View.VISIBLE
-
-        textResultScore.text =
-            "Сначала выберите или зарегистрируйте игрока"
-
-        textResultHits.text =
-            ""
-
-        textResultMisses.text =
-            ""
-
-        textResultAccuracy.text =
-            ""
-
-        buttonReplay.isEnabled =
-            false
-    }
-
-
-
     private fun startRound() {
-
-        hasGameState = true
 
         timer?.cancel()
 
         score = 0
         hits = 0
         misses = 0
-
-        resultSaved = false
 
         updateHud()
 
@@ -291,7 +136,10 @@ class GameFragment : Fragment(R.layout.fragment_game) {
                 settings.maxBugs,
 
             speedMultiplier =
-                settings.gameSpeed / 5f
+                settings.gameSpeed / 5f,
+
+            bonusIntervalSeconds =
+                settings.bonusInterval
         )
 
 
@@ -369,41 +217,6 @@ class GameFragment : Fragment(R.layout.fragment_game) {
 
         resultContainer.visibility =
             View.VISIBLE
-
-        saveResult(accuracy)
-    }
-
-    private fun saveResult(
-        accuracy: Int
-    ) {
-
-        if (resultSaved) {
-            return
-        }
-
-        val player =
-            activePlayer ?: return
-
-        resultSaved = true
-
-        val result =
-            ScoreEntity(
-                playerId = player.id,
-                score = score,
-                difficulty = player.difficulty,
-                hits = hits,
-                misses = misses,
-                accuracy = accuracy,
-                timestamp = System.currentTimeMillis()
-            )
-
-        viewLifecycleOwner
-            .lifecycleScope
-            .launch {
-
-                database.scoreDao()
-                    .insertScore(result)
-            }
     }
 
 
@@ -427,11 +240,5 @@ class GameFragment : Fragment(R.layout.fragment_game) {
         gameView.stopGame()
 
         super.onDestroyView()
-    }
-
-    override fun onResume() {
-        super.onResume()
-
-        loadActivePlayer()
     }
 }

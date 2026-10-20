@@ -16,15 +16,10 @@ class GameView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
 ) : View(context, attrs) {
-
     var onBugHit: ((Bug) -> Unit)? = null
-
     var onMiss: (() -> Unit)? = null
-
     private val bugs = mutableListOf<Bug>()
-
     private val bitmaps = mutableMapOf<Int, Bitmap>()
-
     private var bonus: Bonus? = null
 
     private val bonusPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -38,15 +33,16 @@ class GameView @JvmOverloads constructor(
     }
 
     private var lastFrameTime = System.nanoTime()
-
     private var running = false
-
     private var speedMultiplier = 1f
+    private var bonusIntervalSeconds = 15f
+    private var bonusElapsedSeconds = 0f
 
 
     fun startGame(
         bugCount: Int,
-        speedMultiplier: Float
+        speedMultiplier: Float,
+        bonusIntervalSeconds: Int
     ) {
         bugs.clear()
 
@@ -55,6 +51,11 @@ class GameView @JvmOverloads constructor(
         }
 
         this.speedMultiplier = speedMultiplier
+        this.bonusIntervalSeconds =
+            bonusIntervalSeconds.coerceAtLeast(1).toFloat()
+
+        bonus = null
+        bonusElapsedSeconds = 0f
 
         lastFrameTime = System.nanoTime()
 
@@ -91,7 +92,17 @@ class GameView @JvmOverloads constructor(
             return
         }
 
-        updateBugs()
+        val currentTime = System.nanoTime()
+
+        val deltaTime =
+            ((currentTime - lastFrameTime) /
+                    1_000_000_000f)
+                .coerceIn(0f, 0.05f)
+
+        lastFrameTime = currentTime
+
+        updateBugs(deltaTime)
+        updateBonus(deltaTime)
 
         drawBugs(canvas)
 
@@ -101,17 +112,9 @@ class GameView @JvmOverloads constructor(
     }
 
 
-    private fun updateBugs() {
-
-        val currentTime = System.nanoTime()
-
-        val deltaTime =
-            (currentTime - lastFrameTime) /
-                    1_000_000_000f
-
-        lastFrameTime = currentTime
-
-
+    private fun updateBugs(
+        deltaTime: Float
+    ) {
         bugs.forEach { bug ->
 
             bug.x +=
@@ -153,6 +156,32 @@ class GameView @JvmOverloads constructor(
     }
 
 
+    private fun updateBonus(
+        deltaTime: Float
+    ) {
+        bonusElapsedSeconds += deltaTime
+
+        if (bonusElapsedSeconds < bonusIntervalSeconds) {
+            return
+        }
+
+        bonusElapsedSeconds = 0f
+        spawnBonus()
+    }
+    private fun spawnBonus() {
+        val margin = 0.12f
+
+        bonus = Bonus(
+            x = margin +
+                    Random.nextFloat() *
+                    (1f - margin * 2f),
+            y = margin +
+                    Random.nextFloat() *
+                    (1f - margin * 2f)
+        )
+    }
+
+
     private fun drawBonus(canvas: Canvas) {
         val currentBonus = bonus ?: return
 
@@ -186,8 +215,6 @@ class GameView @JvmOverloads constructor(
             bonusSignPaint
         )
     }
-
-
     private fun drawBugs(canvas: Canvas) {
 
         bugs.forEach { bug ->
@@ -199,7 +226,6 @@ class GameView @JvmOverloads constructor(
             val bugSize =
                 bug.size *
                         minOf(width, height)
-
 
             val pixelX =
                 bug.x * width
@@ -301,6 +327,7 @@ class GameView @JvmOverloads constructor(
                 return true
             }
         }
+
 
         onMiss?.invoke()
 
