@@ -6,8 +6,14 @@ import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import androidx.fragment.app.Fragment
+import android.content.Context
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
+import android.widget.Toast
 
-class GameFragment : Fragment(R.layout.fragment_game) {
+class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
 
     private lateinit var gameView: GameView
     private lateinit var textScore: TextView
@@ -32,6 +38,12 @@ class GameFragment : Fragment(R.layout.fragment_game) {
     private var misses = 0
 
     private val missPenalty = 5
+
+    private lateinit var sensorManager: SensorManager
+
+    private var tiltSensor: Sensor? = null
+
+    private var tiltEnabled = false
 
     override fun onViewCreated(
         view: View,
@@ -101,10 +113,29 @@ class GameFragment : Fragment(R.layout.fragment_game) {
             updateHud()
         }
 
+        gameView.onBonusCollected = {
+            tiltEnabled = true
+
+            startTiltSensor()
+        }
+
         buttonReplay.setOnClickListener {
             startRound()
         }
 
+
+        sensorManager =
+            requireContext().getSystemService(
+                Context.SENSOR_SERVICE
+            ) as SensorManager
+
+        tiltSensor =
+            sensorManager.getDefaultSensor(
+                Sensor.TYPE_GRAVITY
+            ) ?:
+                    sensorManager.getDefaultSensor(
+                        Sensor.TYPE_ACCELEROMETER
+                    )
 
         startRound()
     }
@@ -115,6 +146,9 @@ class GameFragment : Fragment(R.layout.fragment_game) {
         score = 0
         hits = 0
         misses = 0
+
+        tiltEnabled = false
+        stopTiltSensor()
 
         updateHud()
 
@@ -186,6 +220,9 @@ class GameFragment : Fragment(R.layout.fragment_game) {
 
         timer?.cancel()
 
+        tiltEnabled = false
+        stopTiltSensor()
+
         gameView.stopGame()
 
         val attempts =
@@ -219,6 +256,70 @@ class GameFragment : Fragment(R.layout.fragment_game) {
             View.VISIBLE
     }
 
+    private fun startTiltSensor() {
+
+        val sensor =
+            tiltSensor
+
+        if (sensor == null) {
+
+            tiltEnabled = false
+
+            gameView.resetTilt()
+
+            Toast.makeText(
+                requireContext(),
+                "Датчик наклона недоступен",
+                Toast.LENGTH_SHORT
+            ).show()
+
+            return
+        }
+
+        sensorManager.registerListener(
+            this,
+            sensor,
+            SensorManager.SENSOR_DELAY_GAME
+        )
+    }
+
+    private fun stopTiltSensor() {
+
+        sensorManager.unregisterListener(this)
+
+        gameView.resetTilt()
+    }
+
+    override fun onSensorChanged(
+        event: SensorEvent?
+    ) {
+
+        if (!tiltEnabled || event == null) {
+            return
+        }
+
+        val tiltX =
+            (-event.values[0] /
+                    SensorManager.GRAVITY_EARTH)
+                .coerceIn(-1f, 1f)
+
+        val tiltY =
+            (event.values[1] /
+                    SensorManager.GRAVITY_EARTH)
+                .coerceIn(-1f, 1f)
+
+        gameView.setTilt(
+            tiltX,
+            tiltY
+        )
+    }
+
+    override fun onAccuracyChanged(
+        sensor: Sensor?,
+        accuracy: Int
+    ) {
+    }
+
 
     private fun updateHud() {
 
@@ -236,6 +337,9 @@ class GameFragment : Fragment(R.layout.fragment_game) {
     override fun onDestroyView() {
 
         timer?.cancel()
+
+        tiltEnabled = false
+        stopTiltSensor()
 
         gameView.stopGame()
 
