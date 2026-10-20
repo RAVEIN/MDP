@@ -4,6 +4,8 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.MotionEvent
@@ -19,11 +21,21 @@ class GameView @JvmOverloads constructor(
 
     var onMiss: (() -> Unit)? = null
 
-    var onAllBugsDestroyed: (() -> Unit)? = null
-
     private val bugs = mutableListOf<Bug>()
 
     private val bitmaps = mutableMapOf<Int, Bitmap>()
+
+    private var bonus: Bonus? = null
+
+    private val bonusPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(255, 193, 7)
+    }
+
+    private val bonusSignPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        strokeWidth = 8f
+        strokeCap = Paint.Cap.ROUND
+    }
 
     private var lastFrameTime = System.nanoTime()
 
@@ -83,6 +95,8 @@ class GameView @JvmOverloads constructor(
 
         drawBugs(canvas)
 
+        drawBonus(canvas)
+
         postInvalidateOnAnimation()
     }
 
@@ -136,6 +150,41 @@ class GameView @JvmOverloads constructor(
                 bug.directionY *= -1f
             }
         }
+    }
+
+
+    private fun drawBonus(canvas: Canvas) {
+        val currentBonus = bonus ?: return
+
+        val bonusSize = currentBonus.size * minOf(width, height)
+        val centerX = currentBonus.x * width
+        val centerY = currentBonus.y * height
+        val radius = bonusSize / 2f
+
+        canvas.drawCircle(
+            centerX,
+            centerY,
+            radius,
+            bonusPaint
+        )
+
+        val signSize = radius * 0.45f
+
+        canvas.drawLine(
+            centerX - signSize,
+            centerY,
+            centerX + signSize,
+            centerY,
+            bonusSignPaint
+        )
+
+        canvas.drawLine(
+            centerX,
+            centerY - signSize,
+            centerX,
+            centerY + signSize,
+            bonusSignPaint
+        )
     }
 
 
@@ -195,74 +244,65 @@ class GameView @JvmOverloads constructor(
 
 
     override fun onTouchEvent(
-        event: android.view.MotionEvent
+        event: MotionEvent
     ): Boolean {
 
-        if (
-            event.action !=
-            android.view.MotionEvent.ACTION_DOWN
-        ) {
+        if (event.action != MotionEvent.ACTION_DOWN) {
             return true
         }
 
+        val touchX = event.x
+        val touchY = event.y
 
-        if (!running) {
-            return true
+
+        for (bug in bugs.reversed()) {
+
+            val bugSize =
+                bug.size *
+                        minOf(width, height)
+
+
+            val pixelX =
+                bug.x * width
+
+            val pixelY =
+                bug.y * height
+
+
+            val left =
+                pixelX -
+                        bugSize / 2f
+
+            val top =
+                pixelY -
+                        bugSize / 2f
+
+            val right =
+                pixelX +
+                        bugSize / 2f
+
+            val bottom =
+                pixelY +
+                        bugSize / 2f
+
+            if (
+                touchX >= left &&
+                touchX <= right &&
+                touchY >= top &&
+                touchY <= bottom
+            ) {
+
+                bugs.remove(bug)
+
+                onBugHit?.invoke(bug)
+
+                invalidate()
+
+                return true
+            }
         }
 
-        val touchX =
-            event.x / width
-
-        val touchY =
-            event.y / height
-
-
-        val hitBug =
-            bugs.lastOrNull { bug ->
-
-                val halfSize =
-                    bug.size / 2f
-
-
-                touchX >=
-                        bug.x - halfSize &&
-
-                        touchX <=
-                        bug.x + halfSize &&
-
-                        touchY >=
-                        bug.y - halfSize &&
-
-                        touchY <=
-                        bug.y + halfSize
-            }
-
-
-        if (hitBug != null) {
-
-            bugs.remove(
-                hitBug
-            )
-
-            onBugHit?.invoke(
-                hitBug
-            )
-
-            if (bugs.isEmpty()) {
-
-                running =
-                    false
-
-                onAllBugsDestroyed
-                    ?.invoke()
-            }
-
-            invalidate()
-
-        } else {
-            onMiss?.invoke()
-        }
-
+        onMiss?.invoke()
 
         return true
     }
