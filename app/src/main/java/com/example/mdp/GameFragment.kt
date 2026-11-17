@@ -16,8 +16,11 @@ import android.media.MediaPlayer
 import androidx.lifecycle.lifecycleScope
 import com.example.mdp.network.GoldPriceRepository
 import kotlinx.coroutines.launch
+import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
+
+    private val gameViewModel: GameViewModel by viewModel()
 
     private lateinit var gameView: GameView
     private lateinit var textScore: TextView
@@ -37,11 +40,11 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
 
     private var timer: CountDownTimer? = null
 
-    private var score = 0
-    private var hits = 0
-    private var misses = 0
-
-    private val missPenalty = 5
+//    private var score = 0
+//    private var hits = 0
+//    private var misses = 0
+//
+//    private val missPenalty = 5
 
     private lateinit var sensorManager: SensorManager
 
@@ -99,9 +102,9 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
 
         gameView.onBugHit = { bug ->
 
-            hits++
-
-            score += bug.points
+            gameViewModel.registerBugHit(
+                bug.points
+            )
 
             updateHud()
         }
@@ -109,12 +112,7 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
 
         gameView.onMiss = {
 
-            misses++
-
-            score = maxOf(
-                0,
-                score - missPenalty
-            )
+            gameViewModel.registerMiss()
 
             updateHud()
         }
@@ -167,9 +165,7 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
 
         timer?.cancel()
 
-        score = 0
-        hits = 0
-        misses = 0
+        gameViewModel.resetStats()
 
         tiltEnabled = false
         stopTiltSensor()
@@ -249,28 +245,17 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
 
         gameView.stopGame()
 
-        val attempts =
-            hits + misses
-
-        val accuracy =
-            if (attempts == 0) {
-                0
-            } else {
-                hits * 100 / attempts
-            }
-
-
         textResultScore.text =
-            "Очки: $score"
+            "Очки: ${gameViewModel.score}"
 
         textResultHits.text =
-            "Попадания: $hits"
+            "Попадания: ${gameViewModel.hits}"
 
         textResultMisses.text =
-            "Промахи: $misses"
+            "Промахи: ${gameViewModel.misses}"
 
         textResultAccuracy.text =
-            "Точность: $accuracy%"
+            "Точность: ${gameViewModel.accuracy}%"
 
 
         gameContainer.visibility =
@@ -380,13 +365,13 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
     private fun updateHud() {
 
         textScore.text =
-            "Очки: $score"
+            "Очки: ${gameViewModel.score}"
 
         textHits.text =
-            "Попадания: $hits"
+            "Попадания: ${gameViewModel.hits}"
 
         textMisses.text =
-            "Промахи: $misses"
+            "Промахи: ${gameViewModel.misses}"
     }
 
 
