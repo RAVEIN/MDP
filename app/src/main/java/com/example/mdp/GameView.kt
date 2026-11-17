@@ -11,6 +11,10 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import kotlin.random.Random
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffColorFilter
+import kotlin.math.roundToInt
+
 
 class GameView @JvmOverloads constructor(
     context: Context,
@@ -32,12 +36,25 @@ class GameView @JvmOverloads constructor(
         strokeWidth = 8f
         strokeCap = Paint.Cap.ROUND
     }
+    private val goldenBugPaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+
+            colorFilter =
+                PorterDuffColorFilter(
+                    Color.rgb(255, 193, 7),
+                    PorterDuff.Mode.SRC_ATOP
+                )
+        }
 
     private var lastFrameTime = System.nanoTime()
     private var running = false
     private var speedMultiplier = 1f
     private var bonusIntervalSeconds = 15f
     private var bonusElapsedSeconds = 0f
+
+    private var goldenBugElapsedSeconds = 0f
+
+    private val goldenBugIntervalSeconds = 20f
 
     private var tiltX = 0f
     private var tiltY = 0f
@@ -65,6 +82,7 @@ class GameView @JvmOverloads constructor(
 
         bonus = null
         bonusElapsedSeconds = 0f
+        goldenBugElapsedSeconds = 0f
 
         lastFrameTime = System.nanoTime()
 
@@ -114,9 +132,9 @@ class GameView @JvmOverloads constructor(
 
         updateBugs(deltaTime)
         updateBonus(deltaTime)
+        updateGoldenBug(deltaTime)
 
         drawBugs(canvas)
-
         drawBonus(canvas)
 
         postInvalidateOnAnimation()
@@ -195,6 +213,7 @@ class GameView @JvmOverloads constructor(
         bonusElapsedSeconds = 0f
         spawnBonus()
     }
+
     private fun spawnBonus() {
         val margin = 0.12f
 
@@ -205,6 +224,42 @@ class GameView @JvmOverloads constructor(
             y = margin +
                     Random.nextFloat() *
                     (1f - margin * 2f)
+        )
+    }
+
+    private fun updateGoldenBug(
+        deltaTime: Float
+    ) {
+        goldenBugElapsedSeconds += deltaTime
+
+        if (
+            goldenBugElapsedSeconds <
+            goldenBugIntervalSeconds
+        ) {
+            return
+        }
+
+        goldenBugElapsedSeconds = 0f
+
+        spawnGoldenBug()
+    }
+
+    private fun spawnGoldenBug() {
+
+        val goldPrice =
+            GoldPriceStorage(context)
+                .load()
+
+        val points =
+            goldPrice
+                .roundToInt()
+                .coerceAtLeast(1)
+
+        bugs.add(
+            BugFactory.create(
+                type = BugType.GOLDEN,
+                goldenPoints = points
+            )
         )
     }
 
@@ -286,11 +341,18 @@ class GameView @JvmOverloads constructor(
             )
 
 
+            val paint =
+                if (bug.type == BugType.GOLDEN) {
+                    goldenBugPaint
+                } else {
+                    null
+                }
+
             canvas.drawBitmap(
                 bitmap,
                 null,
                 destination,
-                null
+                paint
             )
         }
     }

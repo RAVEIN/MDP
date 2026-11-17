@@ -6,7 +6,10 @@ object BugFactory {
 
     private var nextId = 1L
 
-    fun create(type: BugType): Bug {
+    fun create(
+        type: BugType,
+        goldenPoints: Int = 0
+    ): Bug {
 
         return when (type) {
 
@@ -46,6 +49,18 @@ object BugFactory {
                 size = 0.07f,
                 type = type,
                 points = 50,
+                imageResource = R.drawable.bug_rare
+            )
+            BugType.GOLDEN -> Bug(
+                id = nextId++,
+                x = Random.nextFloat(),
+                y = Random.nextFloat(),
+                directionX = randomDirection(),
+                directionY = randomDirection(),
+                speed = 0.12f,
+                size = 0.10f,
+                type = type,
+                points = goldenPoints,
                 imageResource = R.drawable.bug_rare
             )
         }
