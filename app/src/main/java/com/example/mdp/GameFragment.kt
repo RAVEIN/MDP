@@ -13,6 +13,9 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.widget.Toast
 import android.media.MediaPlayer
+import androidx.lifecycle.lifecycleScope
+import com.example.mdp.network.GoldPriceRepository
+import kotlinx.coroutines.launch
 
 class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
 
@@ -151,6 +154,16 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
         startRound()
     }
     private fun startRound() {
+
+        viewLifecycleOwner.lifecycleScope.launch {
+
+            try {
+                GoldPriceRepository(
+                    GoldPriceStorage(requireContext())
+                ).updateGoldPrice()
+            } catch (_: Exception) {
+            }
+        }
 
         timer?.cancel()
 

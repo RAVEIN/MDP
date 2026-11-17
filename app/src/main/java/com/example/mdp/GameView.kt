@@ -13,6 +13,9 @@ import android.view.View
 import kotlin.random.Random
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
+import kotlin.math.roundToInt
+
+
 class GameView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
@@ -243,9 +246,19 @@ class GameView @JvmOverloads constructor(
 
     private fun spawnGoldenBug() {
 
+        val goldPrice =
+            GoldPriceStorage(context)
+                .load()
+
+        val points =
+            goldPrice
+                .roundToInt()
+                .coerceAtLeast(1)
+
         bugs.add(
             BugFactory.create(
-                BugType.GOLDEN
+                type = BugType.GOLDEN,
+                goldenPoints = points
             )
         )
     }
