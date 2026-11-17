@@ -49,6 +49,10 @@ class GameView @JvmOverloads constructor(
     private var bonusIntervalSeconds = 15f
     private var bonusElapsedSeconds = 0f
 
+    private var goldenBugElapsedSeconds = 0f
+
+    private val goldenBugIntervalSeconds = 20f
+
     private var tiltX = 0f
     private var tiltY = 0f
 
@@ -75,6 +79,7 @@ class GameView @JvmOverloads constructor(
 
         bonus = null
         bonusElapsedSeconds = 0f
+        goldenBugElapsedSeconds = 0f
 
         lastFrameTime = System.nanoTime()
 
@@ -124,9 +129,9 @@ class GameView @JvmOverloads constructor(
 
         updateBugs(deltaTime)
         updateBonus(deltaTime)
+        updateGoldenBug(deltaTime)
 
         drawBugs(canvas)
-
         drawBonus(canvas)
 
         postInvalidateOnAnimation()
@@ -205,6 +210,7 @@ class GameView @JvmOverloads constructor(
         bonusElapsedSeconds = 0f
         spawnBonus()
     }
+
     private fun spawnBonus() {
         val margin = 0.12f
 
@@ -215,6 +221,32 @@ class GameView @JvmOverloads constructor(
             y = margin +
                     Random.nextFloat() *
                     (1f - margin * 2f)
+        )
+    }
+
+    private fun updateGoldenBug(
+        deltaTime: Float
+    ) {
+        goldenBugElapsedSeconds += deltaTime
+
+        if (
+            goldenBugElapsedSeconds <
+            goldenBugIntervalSeconds
+        ) {
+            return
+        }
+
+        goldenBugElapsedSeconds = 0f
+
+        spawnGoldenBug()
+    }
+
+    private fun spawnGoldenBug() {
+
+        bugs.add(
+            BugFactory.create(
+                BugType.GOLDEN
+            )
         )
     }
 
