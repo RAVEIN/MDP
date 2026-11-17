@@ -149,7 +149,19 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
                 R.raw.bug_scream
             )
 
-        startRound()
+        when {
+            gameViewModel.isRoundRunning -> {
+                resumeRound()
+            }
+
+            gameViewModel.isRoundFinished -> {
+                showResult()
+            }
+
+            else -> {
+                startRound()
+            }
+        }
     }
     private fun startRound() {
 
@@ -165,24 +177,25 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
 
         timer?.cancel()
 
-        gameViewModel.resetStats()
-
         tiltEnabled = false
         stopTiltSensor()
 
-        updateHud()
+        val settings =
+            GameSettingsStorage(
+                requireContext()
+            ).load()
 
+        gameViewModel.startRound(
+            settings.roundDuration
+        )
+
+        updateHud()
 
         gameContainer.visibility =
             View.VISIBLE
 
         resultContainer.visibility =
             View.GONE
-
-        val settings =
-            GameSettingsStorage(
-                requireContext()
-            ).load()
 
 
         gameView.startGame(
@@ -198,10 +211,42 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
 
 
         startTimer(
-            settings.roundDuration
+            gameViewModel.remainingSeconds
         )
     }
+    private fun resumeRound() {
 
+        val settings =
+            GameSettingsStorage(
+                requireContext()
+            ).load()
+
+        updateHud()
+
+        gameContainer.visibility =
+            View.VISIBLE
+
+        resultContainer.visibility =
+            View.GONE
+
+        textTime.text =
+            "Время: ${gameViewModel.remainingSeconds}"
+
+        gameView.startGame(
+            bugCount =
+                settings.maxBugs,
+
+            speedMultiplier =
+                settings.gameSpeed / 5f,
+
+            bonusIntervalSeconds =
+                settings.bonusInterval
+        )
+
+        startTimer(
+            gameViewModel.remainingSeconds
+        )
+    }
     private fun startTimer(
         seconds: Int
     ) {
@@ -218,8 +263,12 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
             ) {
 
                 val secondsLeft =
-                    millisUntilFinished /
-                            1000L
+                    (millisUntilFinished / 1000L)
+                        .toInt()
+
+                gameViewModel.updateRemainingSeconds(
+                    secondsLeft
+                )
 
                 textTime.text =
                     "Время: $secondsLeft"
@@ -227,6 +276,10 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
 
 
             override fun onFinish() {
+
+                gameViewModel.updateRemainingSeconds(
+                    0
+                )
 
                 textTime.text =
                     "Время: 0"
@@ -244,6 +297,16 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
         stopTiltSensor()
 
         gameView.stopGame()
+        gameViewModel.finishRound()
+
+        showResult()
+    }
+    private fun showResult() {
+
+        updateHud()
+
+        textTime.text =
+            "Время: 0"
 
         textResultScore.text =
             "Очки: ${gameViewModel.score}"
@@ -256,7 +319,6 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
 
         textResultAccuracy.text =
             "Точность: ${gameViewModel.accuracy}%"
-
 
         gameContainer.visibility =
             View.GONE

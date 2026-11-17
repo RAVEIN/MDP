@@ -13,10 +13,18 @@ class GameViewModel : ViewModel() {
     var misses = 0
         private set
 
+    var isRoundRunning = false
+        private set
+
+    var isRoundFinished = false
+        private set
+
+    var remainingSeconds = 0
+        private set
+
     val accuracy: Int
         get() {
-            val attempts =
-                hits + misses
+            val attempts = hits + misses
 
             return if (attempts == 0) {
                 0
@@ -24,6 +32,31 @@ class GameViewModel : ViewModel() {
                 hits * 100 / attempts
             }
         }
+
+    fun startRound(
+        durationSeconds: Int
+    ) {
+        resetStats()
+
+        remainingSeconds =
+            durationSeconds
+
+        isRoundRunning = true
+        isRoundFinished = false
+    }
+
+    fun updateRemainingSeconds(
+        seconds: Int
+    ) {
+        remainingSeconds =
+            seconds.coerceAtLeast(0)
+    }
+
+    fun finishRound() {
+        remainingSeconds = 0
+        isRoundRunning = false
+        isRoundFinished = true
+    }
 
     fun resetStats() {
         score = 0
