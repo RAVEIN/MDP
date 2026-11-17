@@ -16,8 +16,11 @@ import android.media.MediaPlayer
 import androidx.lifecycle.lifecycleScope
 import com.example.mdp.network.GoldPriceRepository
 import kotlinx.coroutines.launch
+import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
+
+    private val gameViewModel: GameViewModel by viewModel()
 
     private lateinit var gameView: GameView
     private lateinit var textScore: TextView
@@ -37,11 +40,11 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
 
     private var timer: CountDownTimer? = null
 
-    private var score = 0
-    private var hits = 0
-    private var misses = 0
-
-    private val missPenalty = 5
+//    private var score = 0
+//    private var hits = 0
+//    private var misses = 0
+//
+//    private val missPenalty = 5
 
     private lateinit var sensorManager: SensorManager
 
@@ -99,9 +102,9 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
 
         gameView.onBugHit = { bug ->
 
-            hits++
-
-            score += bug.points
+            gameViewModel.registerBugHit(
+                bug.points
+            )
 
             updateHud()
         }
@@ -109,18 +112,14 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
 
         gameView.onMiss = {
 
-            misses++
-
-            score = maxOf(
-                0,
-                score - missPenalty
-            )
+            gameViewModel.registerMiss()
 
             updateHud()
         }
 
         gameView.onBonusCollected = {
-            tiltEnabled = true
+
+            gameViewModel.enableTilt()
 
             startTiltSensor()
 
@@ -151,43 +150,48 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
                 R.raw.bug_scream
             )
 
-        startRound()
+        when {
+            gameViewModel.isRoundRunning -> {
+                resumeRound()
+            }
+
+            gameViewModel.isRoundFinished -> {
+                showResult()
+            }
+
+            else -> {
+                startRound()
+            }
+        }
     }
     private fun startRound() {
 
-        viewLifecycleOwner.lifecycleScope.launch {
-
-            try {
-                GoldPriceRepository(
-                    GoldPriceStorage(requireContext())
-                ).updateGoldPrice()
-            } catch (_: Exception) {
-            }
-        }
-
         timer?.cancel()
 
-        score = 0
-        hits = 0
-        misses = 0
-
-        tiltEnabled = false
         stopTiltSensor()
 
-        updateHud()
-
-
-        gameContainer.visibility =
-            View.VISIBLE
-
-        resultContainer.visibility =
-            View.GONE
-
         val settings =
-            GameSettingsStorage(
-                requireContext()
-            ).load()
+            loadGameSettings()
 
+        gameViewModel.startRound(
+            settings.roundDuration
+        )
+
+        updateGoldPrice()
+
+        showGameScreen()
+
+        startGameView(
+            settings
+        )
+
+        startTimer(
+            gameViewModel.remainingSeconds
+        )
+    }
+    private fun startGameView(
+        settings: GameSettings
+    ) {
 
         gameView.startGame(
             bugCount =
@@ -199,13 +203,58 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
             bonusIntervalSeconds =
                 settings.bonusInterval
         )
-
-
-        startTimer(
-            settings.roundDuration
-        )
     }
 
+    private fun showGameScreen() {
+
+        updateHud()
+
+        textTime.text =
+            "Время: ${gameViewModel.remainingSeconds}"
+
+        gameContainer.visibility =
+            View.VISIBLE
+
+        resultContainer.visibility =
+            View.GONE
+    }
+
+    private fun updateGoldPrice() {
+
+        viewLifecycleOwner.lifecycleScope.launch {
+
+            try {
+
+                GoldPriceRepository(
+                    GoldPriceStorage(
+                        requireContext()
+                    )
+                ).updateGoldPrice()
+
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    private fun resumeRound() {
+
+        val settings =
+            loadGameSettings()
+
+        showGameScreen()
+
+        startGameView(
+            settings
+        )
+
+        if (gameViewModel.tiltEnabled) {
+            startTiltSensor()
+        }
+
+        startTimer(
+            gameViewModel.remainingSeconds
+        )
+    }
     private fun startTimer(
         seconds: Int
     ) {
@@ -222,8 +271,12 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
             ) {
 
                 val secondsLeft =
-                    millisUntilFinished /
-                            1000L
+                    (millisUntilFinished / 1000L)
+                        .toInt()
+
+                gameViewModel.updateRemainingSeconds(
+                    secondsLeft
+                )
 
                 textTime.text =
                     "Время: $secondsLeft"
@@ -231,6 +284,10 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
 
 
             override fun onFinish() {
+
+                gameViewModel.updateRemainingSeconds(
+                    0
+                )
 
                 textTime.text =
                     "Время: 0"
@@ -244,34 +301,31 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
 
         timer?.cancel()
 
-        tiltEnabled = false
         stopTiltSensor()
 
         gameView.stopGame()
+        gameViewModel.finishRound()
 
-        val attempts =
-            hits + misses
+        showResult()
+    }
+    private fun showResult() {
 
-        val accuracy =
-            if (attempts == 0) {
-                0
-            } else {
-                hits * 100 / attempts
-            }
+        updateHud()
 
+        textTime.text =
+            "Время: 0"
 
         textResultScore.text =
-            "Очки: $score"
+            "Очки: ${gameViewModel.score}"
 
         textResultHits.text =
-            "Попадания: $hits"
+            "Попадания: ${gameViewModel.hits}"
 
         textResultMisses.text =
-            "Промахи: $misses"
+            "Промахи: ${gameViewModel.misses}"
 
         textResultAccuracy.text =
-            "Точность: $accuracy%"
-
+            "Точность: ${gameViewModel.accuracy}%"
 
         gameContainer.visibility =
             View.GONE
@@ -287,7 +341,7 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
 
         if (sensor == null) {
 
-            tiltEnabled = false
+            gameViewModel.disableTilt()
 
             gameView.resetTilt()
 
@@ -341,7 +395,7 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
 
         super.onResume()
 
-        if (tiltEnabled) {
+        if (gameViewModel.tiltEnabled) {
             startTiltSensor()
         }
     }
@@ -350,7 +404,7 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
         event: SensorEvent?
     ) {
 
-        if (!tiltEnabled || event == null) {
+        if (!gameViewModel.tiltEnabled || event == null) {
             return
         }
 
@@ -380,13 +434,13 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
     private fun updateHud() {
 
         textScore.text =
-            "Очки: $score"
+            "Очки: ${gameViewModel.score}"
 
         textHits.text =
-            "Попадания: $hits"
+            "Попадания: ${gameViewModel.hits}"
 
         textMisses.text =
-            "Промахи: $misses"
+            "Промахи: ${gameViewModel.misses}"
     }
 
 
@@ -394,7 +448,6 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
 
         timer?.cancel()
 
-        tiltEnabled = false
         stopTiltSensor()
 
         gameView.stopGame()
@@ -403,5 +456,12 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
         screamPlayer = null
 
         super.onDestroyView()
+    }
+
+    private fun loadGameSettings(): GameSettings {
+
+        return GameSettingsStorage(
+            requireContext()
+        ).load()
     }
 }
