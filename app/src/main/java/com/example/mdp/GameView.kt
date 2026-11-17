@@ -11,7 +11,8 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import kotlin.random.Random
-
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffColorFilter
 class GameView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
@@ -32,6 +33,15 @@ class GameView @JvmOverloads constructor(
         strokeWidth = 8f
         strokeCap = Paint.Cap.ROUND
     }
+    private val goldenBugPaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+
+            colorFilter =
+                PorterDuffColorFilter(
+                    Color.rgb(255, 193, 7),
+                    PorterDuff.Mode.SRC_ATOP
+                )
+        }
 
     private var lastFrameTime = System.nanoTime()
     private var running = false
@@ -286,11 +296,18 @@ class GameView @JvmOverloads constructor(
             )
 
 
+            val paint =
+                if (bug.type == BugType.GOLDEN) {
+                    goldenBugPaint
+                } else {
+                    null
+                }
+
             canvas.drawBitmap(
                 bitmap,
                 null,
                 destination,
-                null
+                paint
             )
         }
     }

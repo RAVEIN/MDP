@@ -48,6 +48,18 @@ object BugFactory {
                 points = 50,
                 imageResource = R.drawable.bug_rare
             )
+            BugType.GOLDEN -> Bug(
+                id = nextId++,
+                x = Random.nextFloat(),
+                y = Random.nextFloat(),
+                directionX = randomDirection(),
+                directionY = randomDirection(),
+                speed = 0.12f,
+                size = 0.10f,
+                type = type,
+                points = 0,
+                imageResource = R.drawable.bug_rare
+            )
         }
     }
 
