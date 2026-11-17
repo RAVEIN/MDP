@@ -118,7 +118,8 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
         }
 
         gameView.onBonusCollected = {
-            tiltEnabled = true
+
+            gameViewModel.enableTilt()
 
             startTiltSensor()
 
@@ -177,7 +178,6 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
 
         timer?.cancel()
 
-        tiltEnabled = false
         stopTiltSensor()
 
         val settings =
@@ -242,6 +242,9 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
             bonusIntervalSeconds =
                 settings.bonusInterval
         )
+        if (gameViewModel.tiltEnabled) {
+            startTiltSensor()
+        }
 
         startTimer(
             gameViewModel.remainingSeconds
@@ -293,7 +296,6 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
 
         timer?.cancel()
 
-        tiltEnabled = false
         stopTiltSensor()
 
         gameView.stopGame()
@@ -334,7 +336,7 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
 
         if (sensor == null) {
 
-            tiltEnabled = false
+            gameViewModel.disableTilt()
 
             gameView.resetTilt()
 
@@ -388,7 +390,7 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
 
         super.onResume()
 
-        if (tiltEnabled) {
+        if (gameViewModel.tiltEnabled) {
             startTiltSensor()
         }
     }
@@ -397,7 +399,7 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
         event: SensorEvent?
     ) {
 
-        if (!tiltEnabled || event == null) {
+        if (!gameViewModel.tiltEnabled || event == null) {
             return
         }
 
@@ -441,7 +443,6 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
 
         timer?.cancel()
 
-        tiltEnabled = false
         stopTiltSensor()
 
         gameView.stopGame()

@@ -22,6 +22,9 @@ class GameViewModel : ViewModel() {
     var remainingSeconds = 0
         private set
 
+    var tiltEnabled = false
+        private set
+
     val accuracy: Int
         get() {
             val attempts = hits + misses
@@ -32,7 +35,6 @@ class GameViewModel : ViewModel() {
                 hits * 100 / attempts
             }
         }
-
     fun startRound(
         durationSeconds: Int
     ) {
@@ -43,6 +45,7 @@ class GameViewModel : ViewModel() {
 
         isRoundRunning = true
         isRoundFinished = false
+        tiltEnabled = false
     }
 
     fun updateRemainingSeconds(
@@ -56,6 +59,7 @@ class GameViewModel : ViewModel() {
         remainingSeconds = 0
         isRoundRunning = false
         isRoundFinished = true
+        tiltEnabled = false
     }
 
     fun resetStats() {
@@ -78,6 +82,13 @@ class GameViewModel : ViewModel() {
             0,
             score - MISS_PENALTY
         )
+    }
+    fun enableTilt() {
+        tiltEnabled = true
+    }
+
+    fun disableTilt() {
+        tiltEnabled = false
     }
 
     companion object {
