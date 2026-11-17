@@ -4,6 +4,8 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.MotionEvent
@@ -14,35 +16,55 @@ class GameView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
 ) : View(context, attrs) {
-
     var onBugHit: ((Bug) -> Unit)? = null
-
     var onMiss: (() -> Unit)? = null
-
-    var onAllBugsDestroyed: (() -> Unit)? = null
-
+    var onBonusCollected: (() -> Unit)? = null
     private val bugs = mutableListOf<Bug>()
-
     private val bitmaps = mutableMapOf<Int, Bitmap>()
+    private var bonus: Bonus? = null
+
+    private val bonusPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(255, 193, 7)
+    }
+
+    private val bonusSignPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        strokeWidth = 8f
+        strokeCap = Paint.Cap.ROUND
+    }
 
     private var lastFrameTime = System.nanoTime()
-
     private var running = false
-
     private var speedMultiplier = 1f
+    private var bonusIntervalSeconds = 15f
+    private var bonusElapsedSeconds = 0f
+
+    private var tiltX = 0f
+    private var tiltY = 0f
+
+    private var tiltEnabled = false
+
+    private val tiltStrength = 0.45f
 
 
     fun startGame(
         bugCount: Int,
-        speedMultiplier: Float
+        speedMultiplier: Float,
+        bonusIntervalSeconds: Int
     ) {
         bugs.clear()
+        resetTilt()
 
         repeat(bugCount) {
             bugs.add(createRandomBug())
         }
 
         this.speedMultiplier = speedMultiplier
+        this.bonusIntervalSeconds =
+            bonusIntervalSeconds.coerceAtLeast(1).toFloat()
+
+        bonus = null
+        bonusElapsedSeconds = 0f
 
         lastFrameTime = System.nanoTime()
 
@@ -54,6 +76,8 @@ class GameView @JvmOverloads constructor(
 
     fun stopGame() {
         running = false
+        resetTilt()
+        bonus = null
     }
 
 
@@ -79,57 +103,77 @@ class GameView @JvmOverloads constructor(
             return
         }
 
-        updateBugs()
+        val currentTime = System.nanoTime()
+
+        val deltaTime =
+            ((currentTime - lastFrameTime) /
+                    1_000_000_000f)
+                .coerceIn(0f, 0.05f)
+
+        lastFrameTime = currentTime
+
+        updateBugs(deltaTime)
+        updateBonus(deltaTime)
 
         drawBugs(canvas)
+
+        drawBonus(canvas)
 
         postInvalidateOnAnimation()
     }
 
 
-    private fun updateBugs() {
-
-        val currentTime = System.nanoTime()
-
-        val deltaTime =
-            (currentTime - lastFrameTime) /
-                    1_000_000_000f
-
-        lastFrameTime = currentTime
-
-
+    private fun updateBugs(
+        deltaTime: Float
+    ) {
         bugs.forEach { bug ->
 
-            bug.x +=
+            val baseSpeedX =
                 bug.directionX *
                         bug.speed *
-                        speedMultiplier *
+                        speedMultiplier
+
+            val baseSpeedY =
+                bug.directionY *
+                        bug.speed *
+                        speedMultiplier
+
+            val gravitySpeedX =
+                if (tiltEnabled) {
+                    tiltX * tiltStrength
+                } else {
+                    0f
+                }
+
+            val gravitySpeedY =
+                if (tiltEnabled) {
+                    tiltY * tiltStrength
+                } else {
+                    0f
+                }
+
+            bug.x +=
+                (baseSpeedX + gravitySpeedX) *
                         deltaTime
 
             bug.y +=
-                bug.directionY *
-                        bug.speed *
-                        speedMultiplier *
+                (baseSpeedY + gravitySpeedY) *
                         deltaTime
-
 
             if (bug.x < 0f) {
                 bug.x = 0f
                 bug.directionX *= -1f
             }
 
-
             if (bug.x > 1f) {
                 bug.x = 1f
                 bug.directionX *= -1f
             }
 
-
             if (bug.y < 0f) {
                 bug.y = 0f
                 bug.directionY *= -1f
             }
-
 
             if (bug.y > 1f) {
                 bug.y = 1f
@@ -139,6 +183,65 @@ class GameView @JvmOverloads constructor(
     }
 
 
+    private fun updateBonus(
+        deltaTime: Float
+    ) {
+        bonusElapsedSeconds += deltaTime
+
+        if (bonusElapsedSeconds < bonusIntervalSeconds) {
+            return
+        }
+
+        bonusElapsedSeconds = 0f
+        spawnBonus()
+    }
+    private fun spawnBonus() {
+        val margin = 0.12f
+
+        bonus = Bonus(
+            x = margin +
+                    Random.nextFloat() *
+                    (1f - margin * 2f),
+            y = margin +
+                    Random.nextFloat() *
+                    (1f - margin * 2f)
+        )
+    }
+
+
+    private fun drawBonus(canvas: Canvas) {
+        val currentBonus = bonus ?: return
+
+        val bonusSize = currentBonus.size * minOf(width, height)
+        val centerX = currentBonus.x * width
+        val centerY = currentBonus.y * height
+        val radius = bonusSize / 2f
+
+        canvas.drawCircle(
+            centerX,
+            centerY,
+            radius,
+            bonusPaint
+        )
+
+        val signSize = radius * 0.45f
+
+        canvas.drawLine(
+            centerX - signSize,
+            centerY,
+            centerX + signSize,
+            centerY,
+            bonusSignPaint
+        )
+
+        canvas.drawLine(
+            centerX,
+            centerY - signSize,
+            centerX,
+            centerY + signSize,
+            bonusSignPaint
+        )
+    }
     private fun drawBugs(canvas: Canvas) {
 
         bugs.forEach { bug ->
@@ -150,7 +253,6 @@ class GameView @JvmOverloads constructor(
             val bugSize =
                 bug.size *
                         minOf(width, height)
-
 
             val pixelX =
                 bug.x * width
@@ -195,76 +297,115 @@ class GameView @JvmOverloads constructor(
 
 
     override fun onTouchEvent(
-        event: android.view.MotionEvent
+        event: MotionEvent
     ): Boolean {
 
+        if (event.action != MotionEvent.ACTION_DOWN) {
+            return true
+        }
+
+        val touchX = event.x
+        val touchY = event.y
+
+        val currentBonus = bonus
         if (
-            event.action !=
-            android.view.MotionEvent.ACTION_DOWN
+            currentBonus != null &&
+            isBonusHit(
+                touchX,
+                touchY,
+                currentBonus
+            )
         ) {
-            return true
-        }
+            bonus = null
 
-
-        if (!running) {
-            return true
-        }
-
-        val touchX =
-            event.x / width
-
-        val touchY =
-            event.y / height
-
-
-        val hitBug =
-            bugs.lastOrNull { bug ->
-
-                val halfSize =
-                    bug.size / 2f
-
-
-                touchX >=
-                        bug.x - halfSize &&
-
-                        touchX <=
-                        bug.x + halfSize &&
-
-                        touchY >=
-                        bug.y - halfSize &&
-
-                        touchY <=
-                        bug.y + halfSize
-            }
-
-
-        if (hitBug != null) {
-
-            bugs.remove(
-                hitBug
-            )
-
-            onBugHit?.invoke(
-                hitBug
-            )
-
-            if (bugs.isEmpty()) {
-
-                running =
-                    false
-
-                onAllBugsDestroyed
-                    ?.invoke()
-            }
+            onBonusCollected?.invoke()
 
             invalidate()
 
-        } else {
-            onMiss?.invoke()
+            return true
+        }
+
+        for (bug in bugs.reversed()) {
+
+            val bugSize =
+                bug.size *
+                        minOf(width, height)
+
+
+            val pixelX =
+                bug.x * width
+
+            val pixelY =
+                bug.y * height
+
+
+            val left =
+                pixelX -
+                        bugSize / 2f
+
+            val top =
+                pixelY -
+                        bugSize / 2f
+
+            val right =
+                pixelX +
+                        bugSize / 2f
+
+            val bottom =
+                pixelY +
+                        bugSize / 2f
+
+            if (
+                touchX >= left &&
+                touchX <= right &&
+                touchY >= top &&
+                touchY <= bottom
+            ) {
+
+                bugs.remove(bug)
+
+                onBugHit?.invoke(bug)
+
+                invalidate()
+
+                return true
+            }
         }
 
 
+        onMiss?.invoke()
+
         return true
+    }
+
+
+    private fun isBonusHit(
+        touchX: Float,
+        touchY: Float,
+        currentBonus: Bonus
+    ): Boolean {
+        val bonusSize =
+            currentBonus.size *
+                    minOf(width, height)
+
+        val centerX =
+            currentBonus.x * width
+
+        val centerY =
+            currentBonus.y * height
+
+        val radius =
+            bonusSize / 2f
+
+        val dx =
+            touchX - centerX
+
+        val dy =
+            touchY - centerY
+
+        return dx * dx +
+                dy * dy <=
+                radius * radius
     }
 
 
@@ -287,5 +428,22 @@ class GameView @JvmOverloads constructor(
         running = false
 
         super.onDetachedFromWindow()
+    }
+
+    fun setTilt(
+        x: Float,
+        y: Float
+    ) {
+        tiltX = x.coerceIn(-1f, 1f)
+        tiltY = y.coerceIn(-1f, 1f)
+
+        tiltEnabled = true
+    }
+
+    fun resetTilt() {
+        tiltX = 0f
+        tiltY = 0f
+
+        tiltEnabled = false
     }
 }

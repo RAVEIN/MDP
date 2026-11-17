@@ -6,18 +6,17 @@ import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import androidx.fragment.app.Fragment
-
-import androidx.lifecycle.lifecycleScope
-import com.example.mdp.data.AppDatabase
-import com.example.mdp.data.PlayerEntity
-import com.example.mdp.data.ScoreEntity
-import kotlinx.coroutines.launch
+import android.content.Context
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.widget.Toast
+import android.media.MediaPlayer
 
-class GameFragment : Fragment(R.layout.fragment_game) {
+class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
 
     private lateinit var gameView: GameView
-
     private lateinit var textScore: TextView
     private lateinit var textTime: TextView
     private lateinit var textHits: TextView
@@ -39,20 +38,15 @@ class GameFragment : Fragment(R.layout.fragment_game) {
     private var hits = 0
     private var misses = 0
 
-    private var resultSaved = false
-
     private val missPenalty = 5
 
-    private lateinit var textPlayer: TextView
+    private lateinit var sensorManager: SensorManager
 
-    private lateinit var database: AppDatabase
-    private lateinit var currentPlayerStorage: CurrentPlayerStorage
+    private var tiltSensor: Sensor? = null
 
-    private var activePlayer: PlayerEntity? = null
+    private var tiltEnabled = false
 
-    private var loadedPlayerId: Long? = null
-
-    private var hasGameState = false
+    private var screamPlayer: MediaPlayer? = null
 
     override fun onViewCreated(
         view: View,
@@ -99,27 +93,12 @@ class GameFragment : Fragment(R.layout.fragment_game) {
         buttonReplay =
             view.findViewById(R.id.buttonReplay)
 
-        textPlayer =
-            view.findViewById(R.id.textPlayer)
-
-
-        database =
-            AppDatabase.getInstance(
-                requireContext()
-            )
-
-        currentPlayerStorage =
-            CurrentPlayerStorage(
-                requireContext()
-            )
-
 
         gameView.onBugHit = { bug ->
 
             hits++
 
-            score +=
-                bug.points
+            score += bug.points
 
             updateHud()
         }
@@ -129,139 +108,49 @@ class GameFragment : Fragment(R.layout.fragment_game) {
 
             misses++
 
-            score =
-                maxOf(
-                    0,
-                    score - missPenalty
-                )
+            score = maxOf(
+                0,
+                score - missPenalty
+            )
 
             updateHud()
         }
 
-        gameView.onAllBugsDestroyed = {
+        gameView.onBonusCollected = {
+            tiltEnabled = true
 
-            finishGame()
+            startTiltSensor()
+
+            playBugScream()
         }
-
 
         buttonReplay.setOnClickListener {
-
-            if (activePlayer == null) {
-
-                Toast.makeText(
-                    requireContext(),
-                    "Сначала выберите игрока",
-                    Toast.LENGTH_SHORT
-                ).show()
-
-            } else {
-
-                startRound()
-            }
+            startRound()
         }
 
 
+        sensorManager =
+            requireContext().getSystemService(
+                Context.SENSOR_SERVICE
+            ) as SensorManager
 
+        tiltSensor =
+            sensorManager.getDefaultSensor(
+                Sensor.TYPE_GRAVITY
+            ) ?:
+                    sensorManager.getDefaultSensor(
+                        Sensor.TYPE_ACCELEROMETER
+                    )
+
+        screamPlayer =
+            MediaPlayer.create(
+                requireContext(),
+                R.raw.bug_scream
+            )
+
+        startRound()
     }
-
-    private fun loadActivePlayer() {
-
-        val playerId =
-            currentPlayerStorage.getPlayerId()
-
-        if (playerId == null) {
-
-            activePlayer = null
-            loadedPlayerId = null
-            hasGameState = false
-
-            showPlayerRequired()
-
-            return
-        }
-
-        viewLifecycleOwner
-            .lifecycleScope
-            .launch {
-
-                val player =
-                    database.playerDao()
-                        .getPlayerById(playerId)
-
-                if (player == null) {
-
-                    currentPlayerStorage.clear()
-
-                    activePlayer = null
-                    loadedPlayerId = null
-                    hasGameState = false
-
-                    showPlayerRequired()
-
-                    return@launch
-                }
-
-                val playerChanged =
-                    loadedPlayerId != player.id
-
-                activePlayer =
-                    player
-
-                loadedPlayerId =
-                    player.id
-
-                textPlayer.text =
-                    "Игрок: ${player.fullName} | " +
-                            "Сложность: ${player.difficulty}"
-
-                buttonReplay.isEnabled =
-                    true
-
-                if (
-                    !hasGameState ||
-                    playerChanged
-                ) {
-
-                    startRound()
-                }
-            }
-    }
-
-    private fun showPlayerRequired() {
-
-        timer?.cancel()
-
-        gameView.stopGame()
-
-        hasGameState = false
-
-        gameContainer.visibility =
-            View.GONE
-
-        resultContainer.visibility =
-            View.VISIBLE
-
-        textResultScore.text =
-            "Сначала выберите или зарегистрируйте игрока"
-
-        textResultHits.text =
-            ""
-
-        textResultMisses.text =
-            ""
-
-        textResultAccuracy.text =
-            ""
-
-        buttonReplay.isEnabled =
-            false
-    }
-
-
-
     private fun startRound() {
-
-        hasGameState = true
 
         timer?.cancel()
 
@@ -269,7 +158,8 @@ class GameFragment : Fragment(R.layout.fragment_game) {
         hits = 0
         misses = 0
 
-        resultSaved = false
+        tiltEnabled = false
+        stopTiltSensor()
 
         updateHud()
 
@@ -291,7 +181,10 @@ class GameFragment : Fragment(R.layout.fragment_game) {
                 settings.maxBugs,
 
             speedMultiplier =
-                settings.gameSpeed / 5f
+                settings.gameSpeed / 5f,
+
+            bonusIntervalSeconds =
+                settings.bonusInterval
         )
 
 
@@ -338,6 +231,9 @@ class GameFragment : Fragment(R.layout.fragment_game) {
 
         timer?.cancel()
 
+        tiltEnabled = false
+        stopTiltSensor()
+
         gameView.stopGame()
 
         val attempts =
@@ -369,41 +265,102 @@ class GameFragment : Fragment(R.layout.fragment_game) {
 
         resultContainer.visibility =
             View.VISIBLE
-
-        saveResult(accuracy)
     }
 
-    private fun saveResult(
-        accuracy: Int
-    ) {
+    private fun startTiltSensor() {
 
-        if (resultSaved) {
+        val sensor =
+            tiltSensor
+
+        if (sensor == null) {
+
+            tiltEnabled = false
+
+            gameView.resetTilt()
+
+            Toast.makeText(
+                requireContext(),
+                "Датчик наклона недоступен",
+                Toast.LENGTH_SHORT
+            ).show()
+
             return
         }
 
+        sensorManager.registerListener(
+            this,
+            sensor,
+            SensorManager.SENSOR_DELAY_GAME
+        )
+    }
+
+    private fun stopTiltSensor() {
+
+        sensorManager.unregisterListener(this)
+
+        gameView.resetTilt()
+    }
+
+    private fun playBugScream() {
+
         val player =
-            activePlayer ?: return
+            screamPlayer ?: return
 
-        resultSaved = true
+        if (player.isPlaying) {
+            player.pause()
+        }
 
-        val result =
-            ScoreEntity(
-                playerId = player.id,
-                score = score,
-                difficulty = player.difficulty,
-                hits = hits,
-                misses = misses,
-                accuracy = accuracy,
-                timestamp = System.currentTimeMillis()
-            )
+        player.seekTo(0)
 
-        viewLifecycleOwner
-            .lifecycleScope
-            .launch {
+        player.start()
+    }
 
-                database.scoreDao()
-                    .insertScore(result)
-            }
+    override fun onPause() {
+
+        sensorManager.unregisterListener(this)
+
+        gameView.resetTilt()
+
+        super.onPause()
+    }
+
+    override fun onResume() {
+
+        super.onResume()
+
+        if (tiltEnabled) {
+            startTiltSensor()
+        }
+    }
+
+    override fun onSensorChanged(
+        event: SensorEvent?
+    ) {
+
+        if (!tiltEnabled || event == null) {
+            return
+        }
+
+        val tiltX =
+            (-event.values[0] /
+                    SensorManager.GRAVITY_EARTH)
+                .coerceIn(-1f, 1f)
+
+        val tiltY =
+            (event.values[1] /
+                    SensorManager.GRAVITY_EARTH)
+                .coerceIn(-1f, 1f)
+
+        gameView.setTilt(
+            tiltX,
+            tiltY
+        )
+    }
+
+    override fun onAccuracyChanged(
+        sensor: Sensor?,
+        accuracy: Int
+    ) {
     }
 
 
@@ -424,14 +381,14 @@ class GameFragment : Fragment(R.layout.fragment_game) {
 
         timer?.cancel()
 
+        tiltEnabled = false
+        stopTiltSensor()
+
         gameView.stopGame()
 
+        screamPlayer?.release()
+        screamPlayer = null
+
         super.onDestroyView()
-    }
-
-    override fun onResume() {
-        super.onResume()
-
-        loadActivePlayer()
     }
 }
