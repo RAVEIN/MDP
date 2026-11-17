@@ -166,71 +166,32 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
     }
     private fun startRound() {
 
-        viewLifecycleOwner.lifecycleScope.launch {
-
-            try {
-                GoldPriceRepository(
-                    GoldPriceStorage(requireContext())
-                ).updateGoldPrice()
-            } catch (_: Exception) {
-            }
-        }
-
         timer?.cancel()
 
         stopTiltSensor()
 
         val settings =
-            GameSettingsStorage(
-                requireContext()
-            ).load()
+            loadGameSettings()
 
         gameViewModel.startRound(
             settings.roundDuration
         )
 
-        updateHud()
+        updateGoldPrice()
 
-        gameContainer.visibility =
-            View.VISIBLE
+        showGameScreen()
 
-        resultContainer.visibility =
-            View.GONE
-
-
-        gameView.startGame(
-            bugCount =
-                settings.maxBugs,
-
-            speedMultiplier =
-                settings.gameSpeed / 5f,
-
-            bonusIntervalSeconds =
-                settings.bonusInterval
+        startGameView(
+            settings
         )
-
 
         startTimer(
             gameViewModel.remainingSeconds
         )
     }
-    private fun resumeRound() {
-
-        val settings =
-            GameSettingsStorage(
-                requireContext()
-            ).load()
-
-        updateHud()
-
-        gameContainer.visibility =
-            View.VISIBLE
-
-        resultContainer.visibility =
-            View.GONE
-
-        textTime.text =
-            "Время: ${gameViewModel.remainingSeconds}"
+    private fun startGameView(
+        settings: GameSettings
+    ) {
 
         gameView.startGame(
             bugCount =
@@ -242,6 +203,50 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
             bonusIntervalSeconds =
                 settings.bonusInterval
         )
+    }
+
+    private fun showGameScreen() {
+
+        updateHud()
+
+        textTime.text =
+            "Время: ${gameViewModel.remainingSeconds}"
+
+        gameContainer.visibility =
+            View.VISIBLE
+
+        resultContainer.visibility =
+            View.GONE
+    }
+
+    private fun updateGoldPrice() {
+
+        viewLifecycleOwner.lifecycleScope.launch {
+
+            try {
+
+                GoldPriceRepository(
+                    GoldPriceStorage(
+                        requireContext()
+                    )
+                ).updateGoldPrice()
+
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    private fun resumeRound() {
+
+        val settings =
+            loadGameSettings()
+
+        showGameScreen()
+
+        startGameView(
+            settings
+        )
+
         if (gameViewModel.tiltEnabled) {
             startTiltSensor()
         }
@@ -451,5 +456,12 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
         screamPlayer = null
 
         super.onDestroyView()
+    }
+
+    private fun loadGameSettings(): GameSettings {
+
+        return GameSettingsStorage(
+            requireContext()
+        ).load()
     }
 }
