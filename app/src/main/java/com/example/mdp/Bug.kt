@@ -1,5 +1,7 @@
 package com.example.mdp
 
+import BugType
+
 data class Bug(
     val id: Long,
 
