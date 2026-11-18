@@ -25,6 +25,9 @@ class GameViewModel : ViewModel() {
     var tiltEnabled = false
         private set
 
+    var savedBugs: List<Bug>? = null
+        private set
+
     val accuracy: Int
         get() {
             val attempts = hits + misses
@@ -35,6 +38,20 @@ class GameViewModel : ViewModel() {
                 hits * 100 / attempts
             }
         }
+
+    fun saveBugs(
+        bugs: List<Bug>
+    ) {
+        savedBugs =
+            bugs.map {
+                it.copy()
+            }
+    }
+
+    fun clearSavedBugs() {
+        savedBugs = null
+    }
+
     fun startRound(
         durationSeconds: Int
     ) {

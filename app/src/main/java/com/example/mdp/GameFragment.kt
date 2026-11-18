@@ -176,6 +176,8 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
         gameViewModel.startRound(
             settings.roundDuration
         )
+        gameViewModel.clearSavedBugs()
+
 
         updateGoldPrice()
 
@@ -243,9 +245,28 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
 
         showGameScreen()
 
-        startGameView(
-            settings
-        )
+        val savedBugs =
+            gameViewModel.savedBugs
+
+        if (savedBugs != null) {
+
+            gameView.restoreGame(
+                savedBugs =
+                    savedBugs,
+
+                speedMultiplier =
+                    settings.gameSpeed / 5f,
+
+                bonusIntervalSeconds =
+                    settings.bonusInterval
+            )
+
+        } else {
+
+            startGameView(
+                settings
+            )
+        }
 
         if (gameViewModel.tiltEnabled) {
             startTiltSensor()
@@ -449,6 +470,13 @@ class GameFragment : Fragment(R.layout.fragment_game), SensorEventListener {
         timer?.cancel()
 
         stopTiltSensor()
+
+        if (gameViewModel.isRoundRunning) {
+
+            gameViewModel.saveBugs(
+                gameView.getBugsSnapshot()
+            )
+        }
 
         gameView.stopGame()
 

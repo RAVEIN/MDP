@@ -1,6 +1,5 @@
 package com.example.mdp
 
-import BugType
 import kotlin.random.Random
 
 object BugFactory {

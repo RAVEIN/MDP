@@ -54,7 +54,7 @@ class GameView @JvmOverloads constructor(
 
     private var goldenBugElapsedSeconds = 0f
 
-    private val goldenBugIntervalSeconds = 20f
+    private val goldenBugIntervalSeconds = 10f
 
     private var tiltX = 0f
     private var tiltY = 0f
@@ -508,4 +508,46 @@ class GameView @JvmOverloads constructor(
 
         tiltEnabled = false
     }
+    fun getBugsSnapshot(): List<Bug> {
+
+        return bugs.map {
+            it.copy()
+        }
+    }
+
+    fun restoreGame(
+        savedBugs: List<Bug>,
+        speedMultiplier: Float,
+        bonusIntervalSeconds: Int
+    ) {
+
+        bugs.clear()
+
+        bugs.addAll(
+            savedBugs.map {
+                it.copy()
+            }
+        )
+
+        this.speedMultiplier =
+            speedMultiplier
+
+        this.bonusIntervalSeconds =
+            bonusIntervalSeconds
+                .coerceAtLeast(1)
+                .toFloat()
+
+        bonus = null
+
+        bonusElapsedSeconds = 0f
+        goldenBugElapsedSeconds = 0f
+
+        lastFrameTime =
+            System.nanoTime()
+
+        running = true
+
+        invalidate()
+    }
+
 }
